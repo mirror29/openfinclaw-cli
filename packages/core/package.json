@@ -12,7 +12,12 @@
     "build": "tsc",
     "test": "echo 'no tests yet'"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "yaml": "^2.8.3"
+  },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "typescript": "^5.7.0"
   }
 }

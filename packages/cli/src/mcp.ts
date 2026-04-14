@@ -12,6 +12,13 @@ import {
   executeFinCrypto,
   executeFinCompare,
   executeFinSlimSearch,
+  executeSkillLeaderboard,
+  executeSkillGetInfo,
+  executeSkillFork,
+  executeSkillListLocal,
+  executeSkillValidate,
+  executeSkillPublish,
+  executeSkillPublishVerify,
   OPENFINCLAW_AGENT_GUIDANCE,
   type OpenFinClawConfig,
 } from "@openfinclaw/core";
@@ -115,6 +122,76 @@ export async function startMcpServer() {
         market: z.enum(["crypto", "equity"]).optional().describe("Limit search to market type"),
       },
       wrapHandler(config, executeFinSlimSearch),
+    );
+  }
+
+  // ── Strategy tools ──
+  if (groups.includes("strategy")) {
+    server.tool(
+      "skill_leaderboard",
+      "Query strategy leaderboard from Hub",
+      {
+        boardType: z.enum(["composite", "returns", "risk", "popular", "rising"]).optional().describe("Leaderboard type (default: composite)"),
+        limit: z.number().optional().describe("Max results (max 100, default: 20)"),
+        offset: z.number().optional().describe("Pagination offset"),
+      },
+      wrapHandler(config, executeSkillLeaderboard),
+    );
+
+    server.tool(
+      "skill_get_info",
+      "Get strategy details from Hub",
+      {
+        strategyId: z.string().describe("Strategy ID (UUID or Hub URL)"),
+      },
+      wrapHandler(config, executeSkillGetInfo),
+    );
+
+    server.tool(
+      "skill_fork",
+      "Fork a public strategy from Hub to local directory",
+      {
+        strategyId: z.string().describe("Strategy ID (UUID or Hub URL)"),
+        name: z.string().optional().describe("Custom name for forked strategy"),
+        targetDir: z.string().optional().describe("Custom target directory"),
+      },
+      wrapHandler(config, executeSkillFork),
+    );
+
+    server.tool(
+      "skill_list_local",
+      "List all local strategies (forked or created)",
+      {},
+      wrapHandler(config, executeSkillListLocal),
+    );
+
+    server.tool(
+      "skill_validate",
+      "Validate a strategy package directory (FEP v2.0)",
+      {
+        dirPath: z.string().describe("Strategy package directory (must contain fep.yaml)"),
+      },
+      wrapHandler(config, executeSkillValidate),
+    );
+
+    server.tool(
+      "skill_publish",
+      "Publish a strategy ZIP to Hub server (auto-runs backtest)",
+      {
+        filePath: z.string().describe("Path to strategy ZIP file"),
+        visibility: z.enum(["public", "private", "unlisted"]).optional().describe("Override visibility"),
+      },
+      wrapHandler(config, executeSkillPublish),
+    );
+
+    server.tool(
+      "skill_publish_verify",
+      "Check publish and backtest status by submission or task ID",
+      {
+        submissionId: z.string().optional().describe("Submission ID from skill_publish"),
+        backtestTaskId: z.string().optional().describe("Backtest task ID from skill_publish"),
+      },
+      wrapHandler(config, executeSkillPublishVerify),
     );
   }
 

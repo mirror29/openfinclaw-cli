@@ -33,5 +33,28 @@ export {
 // Strategy
 export { hubApiRequest } from "./strategy/client.js";
 
+// Strategy tools
+export {
+  executeSkillLeaderboard,
+  skillLeaderboardSchema,
+  executeSkillGetInfo,
+  skillGetInfoSchema,
+  executeSkillFork,
+  skillForkSchema,
+  executeSkillListLocal,
+  skillListLocalSchema,
+  executeSkillValidate,
+  skillValidateSchema,
+  executeSkillPublish,
+  skillPublishSchema,
+  executeSkillPublishVerify,
+  skillPublishVerifySchema,
+} from "./strategy/tools.js";
+
+// Strategy utilities
+export { forkStrategy, fetchStrategyInfo } from "./strategy/fork.js";
+export { listLocalStrategies, getStrategiesRoot } from "./strategy/storage.js";
+export { validateStrategyPackage } from "./strategy/validate.js";
+
 // Prompt guidance
 export { OPENFINCLAW_AGENT_GUIDANCE } from "./prompt-guidance.js";
