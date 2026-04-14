@@ -1,0 +1,6 @@
+mcp_servers:
+  openfinclaw:
+    command: "npx"
+    args: ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"]
+    env:
+      OPENFINCLAW_API_KEY: "fch_your_key_here"
