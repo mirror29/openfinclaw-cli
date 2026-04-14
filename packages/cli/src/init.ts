@@ -116,6 +116,8 @@ function writeYamlConfig(
 
   const insertBlock = `  openfinclaw:\n    command: "${entry.command}"\n    args: ${JSON.stringify(entry.args)}\n    env:\n      OPENFINCLAW_API_KEY: "${entry.env.OPENFINCLAW_API_KEY}"\n`;
 
+  content = content.replace(/\n  openfinclaw:\n(?:    [^\n]*\n)*/g, "");
+
   if (content.includes("mcp_servers:")) {
     content = content.replace("mcp_servers:", "mcp_servers:\n" + insertBlock);
   } else {
