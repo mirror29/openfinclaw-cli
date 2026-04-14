@@ -56,5 +56,20 @@ export { forkStrategy, fetchStrategyInfo } from "./strategy/fork.js";
 export { listLocalStrategies, getStrategiesRoot } from "./strategy/storage.js";
 export { validateStrategyPackage } from "./strategy/validate.js";
 
+// Scheduler tools
+export {
+  executeStrategyDailyScan, strategyDailyScanSchema,
+  executeStrategyPriceMonitor, strategyPriceMonitorSchema,
+  executeStrategyScanHistory, strategyScanHistorySchema,
+  executeStrategyPeriodicReport, strategyPeriodicReportSchema,
+} from "./scheduler/tools.js";
+
+// Tournament tools
+export {
+  executeTournamentPick, tournamentPickSchema,
+  executeTournamentLeaderboard, tournamentLeaderboardSchema,
+  executeTournamentResult, tournamentResultSchema,
+} from "./tournament/tools.js";
+
 // Prompt guidance
 export { OPENFINCLAW_AGENT_GUIDANCE } from "./prompt-guidance.js";

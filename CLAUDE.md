@@ -36,6 +36,41 @@ Tools are organized into 4 groups that can be loaded independently via `--tools=
 3. Register MCP tool with Zod schema in `packages/cli/src/mcp.ts`
 4. Optionally add CLI command in `packages/cli/src/cli.ts`
 
+## Testing
+
+- Framework: Vitest
+- Test files: colocated in `packages/core/src/__tests__/*.test.ts`
+- Run tests: `npx vitest run packages/core/src/__tests__/`
+- Run with live API: `OPENFINCLAW_API_KEY=fch_xxx npx vitest run packages/core/src/__tests__/`
+
+### Test categories
+
+1. **Unit tests** (always run, no API key needed):
+   - `config.test.ts` — config resolution, defaults, env var parsing, edge cases
+   - `datahub-client.test.ts` — `guessMarket()` symbol detection logic
+   - `datahub-tools.test.ts` — JSON schema structure validation for datahub tools
+   - `strategy-tools.test.ts` — JSON schema structure validation for strategy tools
+   - `strategy-storage.test.ts` — `parseStrategyId()`, `formatDate()`, `generateForkDirName()` utilities
+
+2. **Live API tests** (skipped unless `OPENFINCLAW_API_KEY` env var is set):
+   - `live.test.ts` — real Hub API calls (leaderboard fetch, board type filtering)
+
+### Test conventions
+
+- Test tool schemas by checking `required`, `properties`, and `enum` values — not by invoking execute functions with mocked HTTP.
+- For pure utility functions (`guessMarket`, `parseStrategyId`, `formatDate`), test all edge cases.
+- Live tests use `describe.skipIf(!HAS_KEY)` to skip gracefully when no API key is set.
+- Do NOT hardcode API keys in test files. Always read from `process.env.OPENFINCLAW_API_KEY`.
+- Each test file should be self-contained — no shared mutable state between files.
+- Clean up env vars in `afterEach` when tests modify `process.env`.
+
+### Adding tests for new tools
+
+1. Add schema validation test in `packages/core/src/__tests__/<group>-tools.test.ts`
+2. If the tool has pure utility functions, add unit tests for those
+3. If the tool calls an API, add a live test in `live.test.ts` guarded by `describe.skipIf(!HAS_KEY)`
+4. Run `npx vitest run packages/core/src/__tests__/` to verify
+
 ## Coding Style
 
 - TypeScript ESM (`.js` extensions in imports)

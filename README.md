@@ -11,6 +11,8 @@
 
 One package. 20+ agent platforms. Zero lock-in.
 
+[Get your API Key](https://hub.openfinclaw.ai) | [Documentation](#quick-start) | [Supported Platforms](#supported-platforms)
+
 </div>
 
 ---
@@ -97,6 +99,7 @@ OpenFinClaw works with any MCP-compatible agent platform:
 | **IDEs** | Claude Code, VS Code (Copilot), Cursor, Windsurf, JetBrains Junie, Zed, Cline, Continue.dev |
 | **CLI Agents** | Codex (OpenAI), OpenCode, Amazon Q CLI |
 | **Frameworks** | Hermes Agent, BeeAI, Swarms |
+| **AI Agents** | OpenClaw, NanoClaw |
 | **Other** | v0 (Vercel), Postman, Roo Code, Amp (Sourcegraph) |
 
 ### Platform Config Examples
@@ -159,6 +162,27 @@ mcp_servers:
     args: ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"]
     env:
       OPENFINCLAW_API_KEY: "fch_xxx"
+```
+</details>
+
+<details>
+<summary><b>OpenClaw</b> — MCP config or native plugin</summary>
+
+OpenClaw supports OpenFinClaw in two ways:
+
+1. **Native plugin** (recommended for OpenClaw users): Install `openfinclaw-strategy` extension in OpenClaw for full integration (SQLite persistence, cron scheduling, dashboard).
+
+2. **MCP mode**: Add to OpenClaw's MCP config:
+```json
+{
+  "mcpServers": {
+    "openfinclaw": {
+      "command": "npx",
+      "args": ["@openfinclaw/cli", "serve"],
+      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+    }
+  }
+}
 ```
 </details>
 

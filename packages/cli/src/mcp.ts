@@ -19,6 +19,13 @@ import {
   executeSkillValidate,
   executeSkillPublish,
   executeSkillPublishVerify,
+  executeStrategyDailyScan,
+  executeStrategyPriceMonitor,
+  executeStrategyScanHistory,
+  executeStrategyPeriodicReport,
+  executeTournamentPick,
+  executeTournamentLeaderboard,
+  executeTournamentResult,
   OPENFINCLAW_AGENT_GUIDANCE,
   type OpenFinClawConfig,
 } from "@openfinclaw/core";
@@ -192,6 +199,86 @@ export async function startMcpServer() {
         backtestTaskId: z.string().optional().describe("Backtest task ID from skill_publish"),
       },
       wrapHandler(config, executeSkillPublishVerify),
+    );
+  }
+
+  // ── Scheduler tools ──
+  if (groups.includes("scheduler")) {
+    server.tool(
+      "strategy_daily_scan",
+      "Scan all local strategies for news and price data",
+      {
+        strategyId: z.string().optional().describe("Scan a specific strategy (default: all)"),
+        includePrice: z.boolean().optional().describe("Include price data (default: true)"),
+      },
+      wrapHandler(config, executeStrategyDailyScan),
+    );
+
+    server.tool(
+      "strategy_price_monitor",
+      "Check price movements against alert threshold for strategy symbols",
+      {
+        threshold: z.number().optional().describe("Alert threshold percentage (default: 5)"),
+        strategyId: z.string().optional().describe("Monitor only one strategy (default: all)"),
+      },
+      wrapHandler(config, executeStrategyPriceMonitor),
+    );
+
+    server.tool(
+      "strategy_scan_history",
+      "Query past strategy scan and report history",
+      {
+        scanType: z.enum(["daily_scan", "price_monitor", "weekly_report", "monthly_report"]).optional().describe("Filter by scan type"),
+        limit: z.number().optional().describe("Max results (default: 10)"),
+      },
+      wrapHandler(config, executeStrategyScanHistory),
+    );
+
+    server.tool(
+      "strategy_periodic_report",
+      "Generate weekly (7d) or monthly (30d) strategy report",
+      {
+        period: z.enum(["weekly", "monthly"]).describe("Report period"),
+      },
+      wrapHandler(config, executeStrategyPeriodicReport),
+    );
+  }
+
+  // ── Tournament tools ──
+  if (groups.includes("tournament")) {
+    server.tool(
+      "tournament_pick",
+      "Pick a strategy agent for the current tournament round",
+      {
+        agent_name: z.enum(["bull", "bear", "contrarian"]).describe("Agent to pick"),
+        user_id: z.string().optional().describe("User identifier"),
+      },
+      wrapHandler(config, executeTournamentPick),
+    );
+
+    server.tool(
+      "tournament_leaderboard",
+      "Show tournament agent leaderboard with W/L records",
+      {},
+      wrapHandler(config, executeTournamentLeaderboard),
+    );
+
+    server.tool(
+      "tournament_result",
+      "Submit analysis result from a tournament sub-agent",
+      {
+        round_id: z.string().describe("Tournament round ID"),
+        agent_name: z.enum(["bull", "bear", "contrarian"]).describe("Agent role"),
+        thesis: z.string().describe("Analysis thesis (1 paragraph)"),
+        confidence: z.number().describe("Confidence score (0-100)"),
+        entry_price: z.number().optional().describe("Entry price"),
+        exit_price: z.number().optional().describe("Exit/target price"),
+        stop_loss: z.number().optional().describe("Stop loss price"),
+        sharpe: z.number().optional().describe("Sharpe ratio"),
+        max_drawdown: z.number().optional().describe("Max drawdown"),
+        total_return: z.number().optional().describe("Total return"),
+      },
+      wrapHandler(config, executeTournamentResult),
     );
   }
 

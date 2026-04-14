@@ -11,6 +11,8 @@
 
 一个包，20+ Agent 平台，零锁定。
 
+[获取 API Key](https://hub.openfinclaw.ai) | [使用文档](#快速开始) | [支持的平台](#支持的平台)
+
 </div>
 
 ---
@@ -97,6 +99,7 @@ OpenFinClaw 支持所有兼容 MCP 协议的 Agent 平台：
 | **IDE/编辑器** | Claude Code, VS Code (Copilot), Cursor, Windsurf, JetBrains Junie, Zed, Cline, Continue.dev |
 | **CLI Agent** | Codex (OpenAI), OpenCode, Amazon Q CLI |
 | **Agent 框架** | Hermes Agent, BeeAI, Swarms |
+| **AI Agent** | OpenClaw, NanoClaw |
 | **其他** | v0 (Vercel), Postman, Roo Code, Amp (Sourcegraph) |
 
 ### 各平台配置示例
@@ -159,6 +162,27 @@ mcp_servers:
     args: ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"]
     env:
       OPENFINCLAW_API_KEY: "fch_xxx"
+```
+</details>
+
+<details>
+<summary><b>OpenClaw</b> — MCP 配置或原生插件</summary>
+
+OpenClaw 支持两种方式使用 OpenFinClaw：
+
+1. **原生插件**（推荐 OpenClaw 用户使用）：安装 `openfinclaw-strategy` 扩展，享受完整功能（SQLite 持久化、定时调度、Dashboard）。
+
+2. **MCP 模式**：在 OpenClaw 的 MCP 配置中添加：
+```json
+{
+  "mcpServers": {
+    "openfinclaw": {
+      "command": "npx",
+      "args": ["@openfinclaw/cli", "serve"],
+      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+    }
+  }
+}
 ```
 </details>
 

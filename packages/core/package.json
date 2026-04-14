@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run"
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
