@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Platform-independent financial tools core — API clients, types, and tool schemas for OpenFinClaw",
   "license": "MIT",
   "type": "module",

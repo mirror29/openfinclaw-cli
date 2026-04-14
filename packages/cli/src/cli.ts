@@ -9,6 +9,7 @@ import {
   executeFinCrypto,
   executeFinCompare,
   executeFinSlimSearch,
+  executeSkillLeaderboard,
 } from "@openfinclaw/core";
 
 function parseArgs(args: string[]): { positional: string[]; flags: Record<string, string> } {
@@ -145,6 +146,30 @@ export async function runCli(command: string, args: string[]) {
           for (const r of result.results as Array<Record<string, unknown>>) {
             console.log(
               `  ${String(r.symbol ?? r.id ?? "").padEnd(15)} ${String(r.name ?? "")} (${r.market})`,
+            );
+          }
+          console.log();
+        }
+        break;
+      }
+
+      case "leaderboard": {
+        const boardType = flags.board ?? "composite";
+        const limit = flags.limit ? Number(flags.limit) : 10;
+        const result = await executeSkillLeaderboard(
+          { boardType, limit },
+          config,
+        );
+        if (outputJson) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.log(`\n  ${result.board} 排行榜 — Top ${result.strategies.length} (共 ${result.total} 个策略)\n`);
+          for (const s of result.strategies) {
+            const ret = s.performance?.returnSincePublish;
+            const arrow = ret != null && ret >= 0 ? "▲" : "▼";
+            const retStr = ret != null ? ` ${arrow} ${ret.toFixed(1)}%` : "";
+            console.log(
+              `  #${String(s.rank).padStart(2)}  ${s.name.padEnd(30)} ${String(s.market ?? "").padEnd(4)}${retStr}`,
             );
           }
           console.log();
