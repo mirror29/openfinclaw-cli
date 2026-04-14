@@ -62,11 +62,8 @@ export class DataHubClient {
 
     const results =
       params.market === "crypto"
-        ? await this.crypto("price/historical", { ...qp, provider: "ccxt" })
-        : await this.equity("price/historical", {
-            ...qp,
-            provider: detectProvider(params.symbol),
-          });
+        ? await this.crypto("price/historical", qp)
+        : await this.equity("price/historical", qp);
 
     return this.normalizeOHLCV(results, params.limit);
   }
@@ -86,7 +83,6 @@ export class DataHubClient {
 
     const qp: Record<string, string> = {
       symbol,
-      provider: detectProvider(symbol),
       limit: "5",
     };
     const results = await this.equity("price/historical", qp);
@@ -124,13 +120,6 @@ export class DataHubClient {
       .sort((a, b) => a.timestamp - b.timestamp);
     return limit ? rows.slice(-limit) : rows;
   }
-}
-
-function detectProvider(symbol: string): string {
-  const u = symbol.toUpperCase();
-  if (u.endsWith(".SH") || u.endsWith(".SZ") || u.endsWith(".BJ") || u.endsWith(".HK") || /^\d{6}/.test(u))
-    return "tushare";
-  return "massive";
 }
 
 /** Guess market type from symbol format. */

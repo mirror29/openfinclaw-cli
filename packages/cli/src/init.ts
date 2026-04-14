@@ -6,26 +6,56 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 
+// ─── Platform Definitions ───────────────────────────────────────────
+
 interface PlatformDef {
   value: string;
   label: string;
+  hint?: string;
   configPath: string;
   format: "json" | "yaml";
   mcpKey: string;
 }
 
 const PLATFORMS: PlatformDef[] = [
-  { value: "claude-code", label: "Claude Code", configPath: "~/.claude/settings.json", format: "json", mcpKey: "mcpServers" },
-  { value: "claude-desktop", label: "Claude Desktop", configPath: "~/Library/Application Support/Claude/claude_desktop_config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "cursor", label: "Cursor", configPath: ".cursor/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "vscode", label: "VS Code (Copilot)", configPath: ".vscode/mcp.json", format: "json", mcpKey: "servers" },
-  { value: "windsurf", label: "Windsurf", configPath: "~/.codeium/windsurf/mcp_config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "junie", label: "JetBrains Junie", configPath: "~/.junie/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "cline", label: "Cline", configPath: "~/.cline/mcp_settings.json", format: "json", mcpKey: "mcpServers" },
-  { value: "codex", label: "Codex (OpenAI)", configPath: "~/.codex/config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "opencode", label: "OpenCode", configPath: "~/.opencode/config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "hermes", label: "Hermes Agent", configPath: "~/.hermes/config.yaml", format: "yaml", mcpKey: "mcp_servers" },
+  // ── Chat ──
+  { value: "claude-desktop", label: "Claude Desktop", hint: "Anthropic 桌面客户端", configPath: "~/Library/Application Support/Claude/claude_desktop_config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "chatgpt", label: "ChatGPT", hint: "OpenAI 桌面客户端", configPath: "~/Library/Application Support/chatgpt/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "chatbox", label: "Chatbox", hint: "多模型聊天客户端", configPath: "~/.chatbox/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "lm-studio", label: "LM Studio", hint: "本地模型推理", configPath: "~/.lmstudio/mcp.json", format: "json", mcpKey: "mcpServers" },
+
+  // ── IDEs ──
+  { value: "claude-code", label: "Claude Code", hint: "~/.claude/settings.json", configPath: "~/.claude/settings.json", format: "json", mcpKey: "mcpServers" },
+  { value: "vscode", label: "VS Code (Copilot)", hint: ".vscode/mcp.json", configPath: ".vscode/mcp.json", format: "json", mcpKey: "servers" },
+  { value: "cursor", label: "Cursor", hint: ".cursor/mcp.json", configPath: ".cursor/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "windsurf", label: "Windsurf", hint: "Codeium AI IDE", configPath: "~/.codeium/windsurf/mcp_config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "zed", label: "Zed", hint: "高性能代码编辑器", configPath: ".zed/settings.json", format: "json", mcpKey: "context_servers" },
+  { value: "junie", label: "JetBrains Junie", hint: "JetBrains AI Agent", configPath: "~/.junie/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "cline", label: "Cline", hint: "VS Code 自主编码 Agent", configPath: "~/.cline/mcp_settings.json", format: "json", mcpKey: "mcpServers" },
+  { value: "continue", label: "Continue.dev", hint: "开源 AI 代码助手", configPath: "~/.continue/config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "roo-code", label: "Roo Code", hint: "VS Code AI 编码", configPath: "~/.roo/mcp.json", format: "json", mcpKey: "mcpServers" },
+
+  // ── CLI Agents ──
+  { value: "codex", label: "Codex (OpenAI)", hint: "OpenAI 命令行 Agent", configPath: "~/.codex/config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "opencode", label: "OpenCode", hint: "开源终端 AI", configPath: "~/.opencode/config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "amazon-q", label: "Amazon Q CLI", hint: "AWS 命令行助手", configPath: "~/.amazonq/mcp.json", format: "json", mcpKey: "mcpServers" },
+
+  // ── Frameworks ──
+  { value: "hermes", label: "Hermes Agent", hint: "~/.hermes/config.yaml", configPath: "~/.hermes/config.yaml", format: "yaml", mcpKey: "mcp_servers" },
+  { value: "beeai", label: "BeeAI", hint: "IBM AI Agent 框架", configPath: ".beeai/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "swarms", label: "Swarms", hint: "多 Agent 编排框架", configPath: ".swarms/mcp.json", format: "json", mcpKey: "mcpServers" },
+
+  // ── AI Agents ──
+  { value: "openclaw", label: "OpenClaw", hint: "AI Agent 平台", configPath: "~/.openclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "nanoclaw", label: "NanoClaw", hint: "轻量 AI Agent", configPath: "~/.nanoclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
+
+  // ── Other ──
+  { value: "v0", label: "v0 (Vercel)", hint: "AI 前端生成平台", configPath: ".v0/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "postman", label: "Postman", hint: "API 开发平台", configPath: "~/postman/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "amp", label: "Amp (Sourcegraph)", hint: "代码智能 Agent", configPath: "~/.amp/config.json", format: "json", mcpKey: "mcpServers" },
 ];
+
+// ─── Helpers ─────────────────────────────────────────────────────────
 
 function expandPath(p: string): string {
   return p.startsWith("~") ? join(homedir(), p.slice(1)) : join(process.cwd(), p);
@@ -96,6 +126,8 @@ function writeYamlConfig(
   return fullPath;
 }
 
+// ─── Main Wizard ─────────────────────────────────────────────────────
+
 export async function runInit() {
   let clack: typeof import("@clack/prompts");
   try {
@@ -106,21 +138,36 @@ export async function runInit() {
     return;
   }
 
-  clack.intro("OpenFinClaw MCP Server 配置向导");
+  clack.intro("OpenFinClaw 配置向导");
 
-  const apiKey = await clack.password({ message: "请输入 API Key (fch_ 开头):" });
-  if (clack.isCancel(apiKey) || !apiKey) {
+  // ── Step 1: Select platforms ──
+  clack.log.step("选择要配置的 AI Agent 平台");
+  const detected = detectPlatforms();
+
+  const platforms = await clack.multiselect({
+    message: "已安装的平台会自动勾选（空格选择，回车确认）",
+    options: PLATFORMS.map((p) => ({
+      value: p.value,
+      label: p.label,
+      hint: detected.has(p.value) ? "✓ 已检测到" : p.hint,
+    })),
+    initialValues: [...detected],
+  });
+  if (clack.isCancel(platforms) || (platforms as string[]).length === 0) {
     clack.cancel("已取消");
     process.exit(0);
   }
 
+  // ── Step 2: Select tool groups ──
+  clack.log.step("选择要启用的工具组");
+
   const toolGroups = await clack.multiselect({
-    message: "选择要启用的工具组:",
+    message: "按需选择，减少不必要的 Token 消耗",
     options: [
-      { value: "datahub", label: "datahub", hint: "行情数据（价格/K线/加密/对比/搜索）" },
-      { value: "strategy", label: "strategy", hint: "策略管理（发布/验证/Fork/排行榜）" },
-      { value: "scheduler", label: "scheduler", hint: "定时任务（每日扫描/价格监控/报告）" },
-      { value: "tournament", label: "tournament", hint: "竞赛（选策略/排行榜/结果）" },
+      { value: "datahub", label: "📊 datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
+      { value: "strategy", label: "🧠 strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
+      { value: "scheduler", label: "⏰ scheduler", hint: "定时监控 — 每日扫描/价格监控/报告 (~600 tokens)" },
+      { value: "tournament", label: "🏆 tournament", hint: "策略竞赛 — 选策略/排行榜/结果 (~400 tokens)" },
     ],
     initialValues: ["datahub", "strategy"],
   });
@@ -129,22 +176,42 @@ export async function runInit() {
     process.exit(0);
   }
 
-  const detected = detectPlatforms();
-  const platforms = await clack.multiselect({
-    message: "选择要配置的平台:",
-    options: PLATFORMS.map((p) => ({
-      value: p.value,
-      label: p.label,
-      hint: detected.has(p.value) ? "已检测到" : undefined,
-    })),
-    initialValues: [...detected],
+  // ── Step 3: Enter API Key ──
+  clack.log.step("输入 API Key");
+
+  // Show where to get the key
+  clack.log.info("还没有 API Key? 免费获取: https://hub.openfinclaw.ai");
+
+  const apiKey = await clack.password({
+    message: "请输入 API Key (fch_ 开头):",
   });
-  if (clack.isCancel(platforms)) {
+  if (clack.isCancel(apiKey) || !apiKey) {
     clack.cancel("已取消");
     process.exit(0);
   }
 
+  // Validate key format
+  if (!(apiKey as string).startsWith("fch_")) {
+    clack.log.warn("API Key 应以 fch_ 开头，请确认是否正确");
+    const confirm = await clack.select({
+      message: "仍然继续?",
+      options: [
+        { value: "yes", label: "继续使用这个 Key" },
+        { value: "no", label: "重新输入" },
+      ],
+    });
+    if (clack.isCancel(confirm) || confirm === "no") {
+      clack.cancel("已取消");
+      process.exit(0);
+    }
+  }
+
+  // ── Step 4: Write configs ──
+  clack.log.step("正在写入配置文件...");
+
   const entry = buildMcpEntry(toolGroups as string[], apiKey as string);
+  let successCount = 0;
+
   for (const pv of platforms as string[]) {
     const platform = PLATFORMS.find((p) => p.value === pv);
     if (!platform) continue;
@@ -153,16 +220,29 @@ export async function runInit() {
         platform.format === "yaml"
           ? writeYamlConfig(platform, entry)
           : writeJsonConfig(platform, entry);
-      clack.log.success(`已写入 ${writtenPath} (${platform.label})`);
+      clack.log.success(`${platform.label}  →  ${writtenPath}`);
+      successCount++;
     } catch (err) {
       clack.log.error(
-        `写入 ${platform.label} 配置失败: ${err instanceof Error ? err.message : String(err)}`,
+        `${platform.label} 写入失败: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
-  clack.outro("完成！试试在你的 Agent 中说：「查询 AAPL 的价格」");
+  // ── Summary ──
+  const s = clack.spinner();
+  s.start("验证配置...");
+  await new Promise((r) => setTimeout(r, 800));
+  s.stop(`${successCount} 个平台配置完成`);
+
+  clack.outro(
+    "试试在你的 Agent 中说：「查询 AAPL 的价格」\n\n"
+    + "  文档: https://github.com/mirror29/openfinclaw-cli\n"
+    + "  获取 API Key: https://hub.openfinclaw.ai",
+  );
 }
+
+// ─── Fallback (no @clack/prompts) ────────────────────────────────────
 
 function runBasicInit() {
   console.log("OpenFinClaw MCP Server — Basic Setup\n");

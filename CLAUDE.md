@@ -71,6 +71,20 @@ Tools are organized into 4 groups that can be loaded independently via `--tools=
 3. If the tool calls an API, add a live test in `live.test.ts` guarded by `describe.skipIf(!HAS_KEY)`
 4. Run `npx vitest run packages/core/src/__tests__/` to verify
 
+## Publishing
+
+- **Always use `pnpm publish`**，不要用 `npm publish`。pnpm 会自动将 `workspace:*` 替换为实际版本号。
+- 发布顺序：先 `packages/core`，再 `packages/cli`（cli 依赖 core）。
+- 发布前确保 `pnpm build` 通过。
+- 每次 bump 版本后才能发布，不允许覆盖已发布版本。
+- 发布后用 `npx @openfinclaw/cli@<version> --help` 验证安装是否正常。
+
+### pnpm workspace 协议
+
+- 本地开发时，`packages/cli/package.json` 中对 core 的依赖使用 `"@openfinclaw/core": "workspace:*"`。
+- `pnpm publish` 会自动将 `workspace:*` 替换为实际版本号（如 `^0.1.0`）。
+- 如果使用 `npm publish`，`workspace:*` 不会被替换，导致用户安装时报 `EUNSUPPORTEDPROTOCOL`。
+
 ## Coding Style
 
 - TypeScript ESM (`.js` extensions in imports)

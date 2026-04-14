@@ -1,11 +1,35 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.1.0",
+  "version": "0.1.3",
+  "description": "Cross-platform financial tools for AI agents — MCP server + CLI",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "openfinclaw": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mirror29/openfinclaw-cli.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "openfinclaw",
+    "mcp",
+    "mcp-server",
+    "financial",
+    "market-data",
+    "stock",
+    "crypto",
+    "cli",
+    "ai-agent"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

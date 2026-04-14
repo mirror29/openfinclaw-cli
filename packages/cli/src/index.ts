@@ -3,6 +3,19 @@
  * OpenFinClaw CLI — MCP Server + CLI dual mode.
  * @module @openfinclaw/cli
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+function getVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+    return pkg.version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 const command = process.argv[2];
 
@@ -12,10 +25,13 @@ if (!command || command === "serve") {
 } else if (command === "init") {
   const { runInit } = await import("./init.js");
   await runInit();
+} else if (command === "update") {
+  const { runUpdate } = await import("./update.js");
+  await runUpdate();
 } else if (command === "--help" || command === "-h") {
   printHelp();
 } else if (command === "--version" || command === "-v") {
-  console.log("0.1.0");
+  console.log(getVersion());
 } else {
   const { runCli } = await import("./cli.js");
   await runCli(command, process.argv.slice(3));
@@ -41,6 +57,7 @@ function printHelp() {
 
     系统:
       init                      交互式配置向导 (多平台 MCP 配置)
+      update                    更新到最新版本
       serve [--tools=<groups>]  启动 MCP Server (Agent 平台连接用)
       doctor                    诊断配置和连接状态
 
@@ -60,6 +77,7 @@ function printHelp() {
     $ openfinclaw compare AAPL,GOOGL,MSFT
     $ openfinclaw search "tesla"
     $ openfinclaw init
+    $ openfinclaw update
 
   文档: https://github.com/mirror29/openfinclaw-cli
 `);
