@@ -36,8 +36,18 @@ function cyan(s: string): string {
 }
 
 /** @param s - text */
+function hiCyan(s: string): string {
+  return sgr("96", s);
+}
+
+/** @param s - text */
 function magenta(s: string): string {
   return sgr("35", s);
+}
+
+/** @param s - text */
+function hiMagenta(s: string): string {
+  return sgr("95", s);
 }
 
 /** @param s - text */
@@ -46,8 +56,18 @@ function green(s: string): string {
 }
 
 /** @param s - text */
+function hiGreen(s: string): string {
+  return sgr("92", s);
+}
+
+/** @param s - text */
 function yellow(s: string): string {
   return sgr("33", s);
+}
+
+/** @param s - text */
+function hiYellow(s: string): string {
+  return sgr("93", s);
 }
 
 /** @param s - text */
@@ -62,9 +82,16 @@ function red(s: string): string {
 function renderBanner(version?: string): string {
   // clack 的 intro 会自带边框/前缀，这里避免再绘制外框，保持极简、对齐稳定
   const v = version ? ` ${dim(`v${version}`)}` : "";
-  const title = `${magenta("OpenFinClaw")} ${dim("·")} ${dim("MCP")} ${dim("·")} ${cyan("init")}${v}`;
-  const subtitle = dim("跨平台 MCP 配置向导（写入各 Agent/IDE 的 mcp.json）");
-  return `${bold(title)}\n${subtitle}`;
+  const logo = [
+    `${hiMagenta("   ____                  _")}`,
+    `${hiMagenta("  / __ \\____  ___  _____(_)___  ____ _      __")}`,
+    `${hiMagenta(" / / / / __ \\/ _ \\/ ___/ / __ \\/ __ \\ | /| / /")}`,
+    `${hiMagenta("/ /_/ / /_/ /  __/ /  / / / / / /_/ / |/ |/ /")}`,
+    `${hiMagenta("\\____/ .___/\\___/_/  /_/_/ /_/\\____/|__/|__/")}`,
+    `${hiMagenta("    /_/")}   ${hiCyan("MCP")} ${dim("·")} ${hiCyan("init")}${v}`,
+  ].join("\n");
+  const subtitle = dim("跨平台 MCP 配置向导 · 自动检测 · 一键写入");
+  return `${logo}\n${subtitle}`;
 }
 
 /**
@@ -274,9 +301,9 @@ function formatDetectHint(p: PlatformDef, info: PlatformDetectInfo): string {
     return p.hint ?? "";
   }
   const parts: string[] = [];
-  if (info.installed) parts.push("已安装");
-  if (info.hasConfig) parts.push("已有 MCP 配置");
-  return `✓ ${parts.join(" · ")}`;
+  if (info.installed) parts.push(`${hiGreen("●")} ${bold("INSTALLED")}`);
+  if (info.hasConfig) parts.push(`${hiCyan("●")} ${bold("CONFIGURED")}`);
+  return parts.join(dim("  "));
 }
 
 /** Platforms to preselect: MCP config exists or install heuristics matched. */
@@ -396,6 +423,19 @@ export async function runInit() {
   clack.log.step(`${cyan("Step 1")} 选择要配置的 AI Agent 平台`);
   const platformStates = detectPlatformStates();
   const detected = selectDetectedPlatforms(platformStates);
+
+  {
+    let installedCount = 0;
+    let configuredCount = 0;
+    for (const p of PLATFORMS) {
+      const s = platformStates.get(p.value);
+      if (s?.installed) installedCount++;
+      if (s?.hasConfig) configuredCount++;
+    }
+    clack.log.info(
+      `${bold("Detected")} ${dim("→")} ${hiGreen(`${installedCount} installed`)} ${dim("·")} ${hiCyan(`${configuredCount} configured`)}`,
+    );
+  }
 
   const platforms = await clack.multiselect({
     message:
