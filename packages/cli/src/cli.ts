@@ -17,13 +17,6 @@ import {
   executeSkillValidate,
   executeSkillPublish,
   executeSkillPublishVerify,
-  executeStrategyDailyScan,
-  executeStrategyPriceMonitor,
-  executeStrategyScanHistory,
-  executeStrategyPeriodicReport,
-  executeTournamentPick,
-  executeTournamentLeaderboard,
-  executeTournamentResult,
 } from "@openfinclaw/core";
 
 /**
@@ -279,114 +272,6 @@ export async function runCli(command: string, args: string[]) {
             {
               submissionId: flags["submission-id"],
               backtestTaskId: flags["backtest-task-id"],
-            },
-            config,
-          ),
-        );
-        break;
-      }
-
-      case "daily-scan": {
-        const includePrice = flags["include-price"] !== "false";
-        printJson(
-          await executeStrategyDailyScan(
-            {
-              strategyId: flags["strategy-id"],
-              includePrice,
-            },
-            config,
-          ),
-        );
-        break;
-      }
-
-      case "price-monitor": {
-        printJson(
-          await executeStrategyPriceMonitor(
-            {
-              threshold: flags.threshold ? Number(flags.threshold) : undefined,
-              strategyId: flags["strategy-id"],
-            },
-            config,
-          ),
-        );
-        break;
-      }
-
-      case "scan-history": {
-        printJson(
-          await executeStrategyScanHistory(
-            {
-              scanType: flags["scan-type"] as
-                | "daily_scan"
-                | "price_monitor"
-                | "weekly_report"
-                | "monthly_report"
-                | undefined,
-              limit: flags.limit ? Number(flags.limit) : undefined,
-            },
-            config,
-          ),
-        );
-        break;
-      }
-
-      case "periodic-report": {
-        const period = (flags.period ?? positional[0]) as "weekly" | "monthly" | undefined;
-        if (period !== "weekly" && period !== "monthly") {
-          console.error("Usage: openfinclaw periodic-report <weekly|monthly>  (or --period weekly|monthly)");
-          process.exit(1);
-        }
-        printJson(await executeStrategyPeriodicReport({ period }, config));
-        break;
-      }
-
-      case "tournament-pick": {
-        const agent = (flags.agent ?? positional[0]) as string | undefined;
-        if (!agent || !["bull", "bear", "contrarian"].includes(agent)) {
-          console.error("Usage: openfinclaw tournament-pick <bull|bear|contrarian> [--user-id <id>]");
-          process.exit(1);
-        }
-        printJson(
-          await executeTournamentPick(
-            { agent_name: agent, user_id: flags["user-id"] },
-            config,
-          ),
-        );
-        break;
-      }
-
-      case "tournament-leaderboard": {
-        printJson(await executeTournamentLeaderboard({}, config));
-        break;
-      }
-
-      case "tournament-result": {
-        const roundId = flags["round-id"] ?? positional[0];
-        const agentName = flags.agent ?? positional[1];
-        const thesis = flags.thesis ?? positional[2];
-        const confRaw = flags.confidence ?? positional[3];
-        if (!roundId || !agentName || !thesis || confRaw === undefined) {
-          console.error(
-            "Usage: openfinclaw tournament-result --round-id <id> --agent <bull|bear|contrarian> " +
-              "--thesis <text> --confidence <0-100> [--entry-price ...] [--exit-price ...] ...",
-          );
-          process.exit(1);
-        }
-        const confidence = Number(confRaw);
-        printJson(
-          await executeTournamentResult(
-            {
-              round_id: roundId,
-              agent_name: agentName,
-              thesis,
-              confidence,
-              entry_price: flags["entry-price"] ? Number(flags["entry-price"]) : undefined,
-              exit_price: flags["exit-price"] ? Number(flags["exit-price"]) : undefined,
-              stop_loss: flags["stop-loss"] ? Number(flags["stop-loss"]) : undefined,
-              sharpe: flags.sharpe ? Number(flags.sharpe) : undefined,
-              max_drawdown: flags["max-drawdown"] ? Number(flags["max-drawdown"]) : undefined,
-              total_return: flags["total-return"] ? Number(flags["total-return"]) : undefined,
             },
             config,
           ),

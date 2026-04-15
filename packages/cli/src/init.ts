@@ -76,7 +76,8 @@ function detectPlatforms(): Set<string> {
 
 function buildMcpEntry(toolGroups: string[], apiKey: string) {
   const args = ["@openfinclaw/cli", "serve"];
-  if (toolGroups.length < 4) {
+  /** When both groups are selected, omit --tools (same as serve default). */
+  if (toolGroups.length > 0 && toolGroups.length < 2) {
     args.push(`--tools=${toolGroups.join(",")}`);
   }
   return { command: "npx", args, env: { OPENFINCLAW_API_KEY: apiKey } };
@@ -200,8 +201,6 @@ export async function runInit() {
     options: [
       { value: "datahub", label: "📊 datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
       { value: "strategy", label: "🧠 strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
-      { value: "scheduler", label: "⏰ scheduler", hint: "定时监控 — 每日扫描/价格监控/报告 (~600 tokens)" },
-      { value: "tournament", label: "🏆 tournament", hint: "策略竞赛 — 选策略/排行榜/结果 (~400 tokens)" },
     ],
     initialValues: ["datahub", "strategy"],
   });

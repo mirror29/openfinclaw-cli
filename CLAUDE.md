@@ -12,6 +12,7 @@
 - Runtime: Node 18+
 - Install: `pnpm install`
 - Build: `pnpm build` (runs `tsc` in both packages, core first)
+- Core `tsconfig.json` excludes `src/**/__tests__/**` so tests are not emitted into `dist/` (smaller npm tarball); Vitest still runs `*.test.ts` from source.
 - Run CLI: `OPENFINCLAW_API_KEY=fch_xxx node packages/cli/dist/index.js <command>`
 - Run MCP: `OPENFINCLAW_API_KEY=fch_xxx node packages/cli/dist/index.js serve`
 
@@ -23,17 +24,15 @@
 
 ## Tool Groups
 
-Tools are organized into 4 groups that can be loaded independently via `--tools=` flag:
+Tools are organized into 2 groups that can be loaded independently via `--tools=` flag:
 - `datahub` — 5 market data tools (fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search)
 - `strategy` — 7 strategy management tools (skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify)
-- `scheduler` — 4 scheduled monitoring tools (strategy_daily_scan, strategy_price_monitor, strategy_scan_history, strategy_periodic_report)
-- `tournament` — 3 competition tools (tournament_pick, tournament_leaderboard, tournament_result)
 
 ## Adding New Tools
 
 1. Add pure execute function + schema in `packages/core/src/<group>/tools.ts`
 2. Export from `packages/core/src/index.ts`
-3. Register MCP tool with Zod schema in `packages/cli/src/mcp.ts`
+3. Register MCP tool via `McpServer.registerTool()` (Zod `inputSchema` in the config object) in `packages/cli/src/mcp.ts`
 4. Optionally add CLI command in `packages/cli/src/cli.ts`
 
 ## Testing

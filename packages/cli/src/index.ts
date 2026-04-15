@@ -61,15 +61,6 @@ function printHelp() {
       publish <zip>             发布策略 ZIP [--visibility]
       publish-verify              查询发布/回测状态 [--submission-id] [--backtest-task-id]
 
-    定时与竞赛:
-      daily-scan                  [--strategy-id] [--include-price false]
-      price-monitor               [--threshold] [--strategy-id]
-      scan-history                [--scan-type] [--limit]
-      periodic-report <weekly|monthly>  (或 --period)
-      tournament-pick <agent>     bull | bear | contrarian [--user-id]
-      tournament-leaderboard
-      tournament-result           使用 --round-id --agent --thesis --confidence 等 flags
-
     系统:
       init                      交互式配置向导 (MCP + ~/.openfinclaw/config.json)
       update                    更新到最新版本
@@ -87,8 +78,9 @@ function printHelp() {
     -v, --version               显示版本
 
   MCP Server 模式:
-    openfinclaw serve                    启动全部工具
-    openfinclaw serve --tools=datahub    只启动行情数据工具
+    openfinclaw serve                         启动全部工具 (datahub + strategy)
+    openfinclaw serve --tools=datahub         只启动行情数据工具
+    openfinclaw serve --tools=datahub,strategy  同上（显式列出两组）
 
   示例:
     $ openfinclaw price AAPL

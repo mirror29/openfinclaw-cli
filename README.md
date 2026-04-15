@@ -19,7 +19,7 @@ One package. 20+ agent platforms. Zero lock-in.
 
 ## What is OpenFinClaw?
 
-OpenFinClaw is a **universal financial toolkit** that works with any AI agent platform via [MCP (Model Context Protocol)](https://modelcontextprotocol.io). It provides market data, strategy management, and automated monitoring — accessible from Claude Code, Hermes, Cursor, VS Code Copilot, and 20+ other platforms.
+OpenFinClaw is a **universal financial toolkit** that works with any AI agent platform via [MCP (Model Context Protocol)](https://modelcontextprotocol.io). It provides market data and strategy management — accessible from Claude Code, Hermes, Cursor, VS Code Copilot, and 20+ other platforms.
 
 ### Key Features
 
@@ -27,8 +27,6 @@ OpenFinClaw is a **universal financial toolkit** that works with any AI agent pl
 |----------|-------|-------------|
 | **Market Data** | `fin_price` `fin_kline` `fin_crypto` `fin_compare` `fin_slim_search` | Real-time prices, OHLCV candlesticks, crypto/DeFi data, multi-asset comparison, symbol search |
 | **Strategy Management** | `skill_publish` `skill_validate` `skill_fork` `skill_leaderboard` `skill_get_info` `skill_list_local` `skill_publish_verify` | Publish strategies to Hub, validate FEP v2.0 packages, fork public strategies, query leaderboards |
-| **Scheduled Monitoring** | `strategy_daily_scan` `strategy_price_monitor` `strategy_scan_history` `strategy_periodic_report` | Daily news/price scans, price anomaly detection, scan history, weekly/monthly reports |
-| **Tournament** | `tournament_pick` `tournament_leaderboard` `tournament_result` | Strategy competitions with bull/bear/contrarian agents |
 
 ---
 
@@ -207,7 +205,7 @@ npx @openfinclaw/cli serve --tools=strategy
 # Multiple groups
 npx @openfinclaw/cli serve --tools=datahub,strategy
 
-# All tools (default, ~2,700 tokens)
+# All tools (default, ~1,700 tokens)
 npx @openfinclaw/cli serve
 ```
 
@@ -215,8 +213,6 @@ npx @openfinclaw/cli serve
 |-------|-------|--------|
 | `datahub` | fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search | ~700 |
 | `strategy` | skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify | ~1,000 |
-| `scheduler` | strategy_daily_scan, strategy_price_monitor, strategy_scan_history, strategy_periodic_report | ~600 |
-| `tournament` | tournament_pick, tournament_leaderboard, tournament_result | ~400 |
 
 ---
 

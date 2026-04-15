@@ -19,7 +19,7 @@
 
 ## 简介
 
-OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 协议与任何 AI Agent 平台对接。提供行情数据、策略管理和自动化监控功能 — 可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台访问。
+OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 协议与任何 AI Agent 平台对接。提供行情数据与策略管理 — 可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台访问。
 
 ### 功能一览
 
@@ -27,8 +27,6 @@ OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Prot
 |------|------|------|
 | **行情数据** | `fin_price` `fin_kline` `fin_crypto` `fin_compare` `fin_slim_search` | 实时价格、K线/OHLCV、加密货币/DeFi 数据、多资产对比、代码搜索 |
 | **策略管理** | `skill_publish` `skill_validate` `skill_fork` `skill_leaderboard` `skill_get_info` `skill_list_local` `skill_publish_verify` | 发布策略到 Hub、验证 FEP v2.0 包、Fork 公开策略、排行榜查询 |
-| **定时监控** | `strategy_daily_scan` `strategy_price_monitor` `strategy_scan_history` `strategy_periodic_report` | 每日新闻/行情扫描、价格异动检测、扫描历史、周报/月报 |
-| **竞赛** | `tournament_pick` `tournament_leaderboard` `tournament_result` | Bull/Bear/Contrarian 策略竞赛 |
 
 ---
 
@@ -206,7 +204,7 @@ npx @openfinclaw/cli serve --tools=strategy
 # 多个分组
 npx @openfinclaw/cli serve --tools=datahub,strategy
 
-# 全部工具（默认，~2,700 tokens）
+# 全部工具（默认，~1,700 tokens）
 npx @openfinclaw/cli serve
 ```
 
@@ -214,8 +212,6 @@ npx @openfinclaw/cli serve
 |------|------|------------|
 | `datahub` | fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search | ~700 |
 | `strategy` | skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify | ~1,000 |
-| `scheduler` | strategy_daily_scan, strategy_price_monitor, strategy_scan_history, strategy_periodic_report | ~600 |
-| `tournament` | tournament_pick, tournament_leaderboard, tournament_result | ~400 |
 
 ---
 
