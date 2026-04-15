@@ -41,7 +41,7 @@ npx @openfinclaw/cli init
 安装向导会：
 - 引导输入 API Key
 - 让你选择要启用的工具组
-- 自动检测已安装的 Agent 平台
+- 结合本机安装痕迹（如应用包、用户数据目录、`PATH` 中的 CLI）与**已有 MCP 配置路径**自动勾选候选平台；二者含义不同，也不等同于「本机装过的所有应用」
 - 将 MCP 配置写入所选平台
 - 写入 `~/.openfinclaw/config.json`（仅保存 API Key），终端可直接用 CLI 而无需 `export`（Unix 下文件权限 600）
 

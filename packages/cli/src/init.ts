@@ -2,6 +2,7 @@
  * Interactive setup wizard — configures MCP on multiple agent platforms.
  * @module @openfinclaw/cli/init
  */
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
@@ -16,6 +17,13 @@ interface PlatformDef {
   configPath: string;
   format: "json" | "yaml";
   mcpKey: string;
+  /**
+   * Extra install markers: only `~` or absolute paths (never cwd-relative).
+   * Merged with {@link extraInstallCandidatePaths} for known IDEs.
+   */
+  installPaths?: string[];
+  /** If any command resolves on PATH, treat the platform as installed. */
+  installCliCommands?: string[];
 }
 
 const PLATFORMS: PlatformDef[] = [
@@ -47,7 +55,15 @@ const PLATFORMS: PlatformDef[] = [
   { value: "swarms", label: "Swarms", hint: "多 Agent 编排框架", configPath: ".swarms/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── AI Agents ──
-  { value: "openclaw", label: "OpenClaw", hint: "AI Agent 平台", configPath: "~/.openclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
+  {
+    value: "openclaw",
+    label: "OpenClaw",
+    hint: "AI Agent 平台",
+    configPath: "~/.openclaw/mcp.json",
+    format: "json",
+    mcpKey: "mcpServers",
+    installCliCommands: ["openclaw"],
+  },
   { value: "nanoclaw", label: "NanoClaw", hint: "轻量 AI Agent", configPath: "~/.nanoclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── Other ──
@@ -62,12 +78,145 @@ function expandPath(p: string): string {
   return p.startsWith("~") ? join(homedir(), p.slice(1)) : join(process.cwd(), p);
 }
 
-function detectPlatforms(): Set<string> {
+/**
+ * Resolves install-marker paths only (`~` or absolute). Never uses `process.cwd()`.
+ * @param p - Path with leading `~` or an absolute path
+ */
+function expandInstallPath(p: string): string {
+  return p.startsWith("~") ? join(homedir(), p.slice(1)) : p;
+}
+
+/**
+ * @param cmd - Command name (ASCII, no shell metacharacters)
+ * @returns Whether `cmd` is found on PATH
+ */
+function commandOnPath(cmd: string): boolean {
+  try {
+    if (process.platform === "win32") {
+      execFileSync("where", [cmd], { stdio: "ignore", windowsHide: true });
+    } else {
+      execFileSync("sh", ["-c", `command -v "${cmd}"`], { stdio: "ignore" });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * OS-specific paths that indicate an IDE/app is present (not MCP config alone).
+ * @param platformValue - `PlatformDef.value`
+ */
+function extraInstallCandidatePaths(platformValue: string): string[] {
+  const out: string[] = [];
+  const plat = process.platform;
+  const la = process.env.LOCALAPPDATA;
+  const uh = homedir();
+
+  switch (platformValue) {
+    case "cursor": {
+      out.push(join(uh, ".cursor"));
+      if (plat === "darwin") out.push("/Applications/Cursor.app");
+      if (plat === "linux") out.push(join(uh, ".config", "Cursor"));
+      if (plat === "win32" && la) {
+        out.push(join(la, "Programs", "cursor", "Cursor.exe"));
+      }
+      break;
+    }
+    case "vscode": {
+      out.push(join(uh, ".vscode"));
+      if (plat === "darwin") out.push("/Applications/Visual Studio Code.app");
+      if (plat === "linux") {
+        out.push("/usr/share/code/code");
+        out.push(join(uh, ".config", "Code"));
+      }
+      if (plat === "win32" && la) {
+        out.push(join(la, "Programs", "Microsoft VS Code", "Code.exe"));
+      }
+      break;
+    }
+    case "zed": {
+      if (plat === "darwin") out.push("/Applications/Zed.app");
+      if (plat === "linux") out.push(join(uh, ".config", "zed"));
+      if (plat === "win32" && la) {
+        out.push(join(la, "Programs", "Zed", "Zed.exe"));
+      }
+      break;
+    }
+    case "openclaw": {
+      /** Primary OpenClaw config; MCP file may not exist until first MCP setup. */
+      out.push(join(uh, ".openclaw", "openclaw.json"));
+      break;
+    }
+    default:
+      break;
+  }
+  return out;
+}
+
+/**
+ * @returns Whether the MCP config path (project- or home-relative) already exists
+ */
+function hasMcpConfigPath(p: PlatformDef): boolean {
+  const fullPath = expandPath(p.configPath);
+  const dir = dirname(fullPath);
+  return existsSync(dir) || existsSync(fullPath);
+}
+
+/**
+ * @returns Whether the app/runtime appears installed (bundle, data dir, or CLI on PATH)
+ */
+function isPlatformInstalled(p: PlatformDef): boolean {
+  const fromDef = (p.installPaths ?? []).map((x) => expandInstallPath(x));
+  const merged = [...fromDef, ...extraInstallCandidatePaths(p.value)];
+  if (merged.some((path) => existsSync(path))) {
+    return true;
+  }
+  if (p.installCliCommands?.some((c) => commandOnPath(c))) {
+    return true;
+  }
+  return false;
+}
+
+interface PlatformDetectInfo {
+  hasConfig: boolean;
+  installed: boolean;
+}
+
+/**
+ * Combines MCP path presence with install heuristics (IDE bundles, `~/.cursor`, `openclaw` on PATH, etc.).
+ */
+function detectPlatformStates(): Map<string, PlatformDetectInfo> {
+  const map = new Map<string, PlatformDetectInfo>();
+  for (const p of PLATFORMS) {
+    map.set(p.value, {
+      hasConfig: hasMcpConfigPath(p),
+      installed: isPlatformInstalled(p),
+    });
+  }
+  return map;
+}
+
+/**
+ * @param info - Detection result for one platform
+ * @returns Hint for multiselect (Chinese labels per wizard locale)
+ */
+function formatDetectHint(p: PlatformDef, info: PlatformDetectInfo): string {
+  if (!info.hasConfig && !info.installed) {
+    return p.hint ?? "";
+  }
+  const parts: string[] = [];
+  if (info.installed) parts.push("已安装");
+  if (info.hasConfig) parts.push("已有 MCP 配置");
+  return `✓ ${parts.join(" · ")}`;
+}
+
+/** Platforms to preselect: MCP config exists or install heuristics matched. */
+function selectDetectedPlatforms(states: Map<string, PlatformDetectInfo>): Set<string> {
   const detected = new Set<string>();
   for (const p of PLATFORMS) {
-    const fullPath = expandPath(p.configPath);
-    const dir = dirname(fullPath);
-    if (existsSync(dir) || existsSync(fullPath)) {
+    const s = states.get(p.value);
+    if (s?.hasConfig || s?.installed) {
       detected.add(p.value);
     }
   }
@@ -177,14 +326,16 @@ export async function runInit() {
 
   // ── Step 1: Select platforms ──
   clack.log.step("选择要配置的 AI Agent 平台");
-  const detected = detectPlatforms();
+  const platformStates = detectPlatformStates();
+  const detected = selectDetectedPlatforms(platformStates);
 
   const platforms = await clack.multiselect({
-    message: "已安装的平台会自动勾选（空格选择，回车确认）",
+    message:
+      "结合本机安装痕迹与 MCP 配置文件自动勾选（空格选择，回车确认）",
     options: PLATFORMS.map((p) => ({
       value: p.value,
       label: p.label,
-      hint: detected.has(p.value) ? "✓ 已检测到" : p.hint,
+      hint: formatDetectHint(p, platformStates.get(p.value) ?? { hasConfig: false, installed: false }),
     })),
     initialValues: [...detected],
   });

@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/core",
-  "version": "0.2.3",
+  "version": "0.3.2",
   "description": "Platform-independent financial tools core — API clients, types, and tool schemas for OpenFinClaw",
   "license": "MIT",
   "type": "module",
@@ -31,7 +31,7 @@
     "strategy"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
     "test": "vitest run"
   },
   "dependencies": {

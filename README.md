@@ -41,7 +41,7 @@ npx @openfinclaw/cli init
 The wizard will:
 - Ask for your API key
 - Let you choose which tool groups to enable
-- Auto-detect installed agent platforms
+- Pre-select platforms when **either** common install markers match (app bundles, user data dirs, CLI on `PATH`) **or** the expected MCP config path already exists — these are not the same as “every app you have installed”
 - Write MCP config to each selected platform
 - Save `~/.openfinclaw/config.json` (API key only) so terminal CLI works without `export` (Unix: file mode 600)
 
