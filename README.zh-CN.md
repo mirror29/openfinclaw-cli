@@ -45,6 +45,9 @@ npx @openfinclaw/cli init
 - 让你选择要启用的工具组
 - 自动检测已安装的 Agent 平台
 - 将 MCP 配置写入所选平台
+- 写入 `~/.openfinclaw/config.json`（仅保存 API Key），终端可直接用 CLI 而无需 `export`（Unix 下文件权限 600）
+
+**CLI 与 MCP：** 各 Agent 从自己的 MCP 配置里 `env` 注入密钥，**不会**改你的 shell 配置。若终端里已 `export OPENFINCLAW_API_KEY`，本机启动的进程仍会读到该变量，这是正常现象。`openfinclaw` / `serve` 解析顺序：`--api-key` → 环境变量 `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json`。
 
 ### 方式二：手动配置
 
@@ -67,8 +70,13 @@ npx @openfinclaw/cli init
 ### 方式三：命令行直接使用
 
 ```bash
-# 设置 API Key
+# 方式 A：已通过 init 写入 ~/.openfinclaw/config.json（推荐）
+
+# 方式 B：当前 shell 会话设置环境变量
 export OPENFINCLAW_API_KEY=fch_你的密钥
+
+# 方式 C：单次命令传入
+npx @openfinclaw/cli price AAPL --api-key fch_你的密钥
 
 # 查询价格
 npx @openfinclaw/cli price AAPL
@@ -166,13 +174,9 @@ mcp_servers:
 </details>
 
 <details>
-<summary><b>OpenClaw</b> — MCP 配置或原生插件</summary>
+<summary><b>OpenClaw</b></summary>
 
-OpenClaw 支持两种方式使用 OpenFinClaw：
-
-1. **原生插件**（推荐 OpenClaw 用户使用）：安装 `openfinclaw-strategy` 扩展，享受完整功能（SQLite 持久化、定时调度、Dashboard）。
-
-2. **MCP 模式**：在 OpenClaw 的 MCP 配置中添加：
+在 MCP 配置中添加 OpenFinClaw（例如 `~/.openclaw/mcp.json`）：
 ```json
 {
   "mcpServers": {
@@ -246,7 +250,8 @@ npx @openfinclaw/cli serve
 
 | 变量 | 必填 | 说明 | 默认值 |
 |------|------|------|--------|
-| `OPENFINCLAW_API_KEY` | 是 | Hub 和 DataHub API Key（`fch_` 前缀） | — |
+| `OPENFINCLAW_API_KEY` | 密钥来源之一 | Hub 与 DataHub API Key（`fch_` 前缀）。若未传 `--api-key`，可在 init 后回退读取 `~/.openfinclaw/config.json`。 | — |
+| `OPENFINCLAW_CONFIG_PATH` | 否 | 覆盖 JSON 配置文件路径 `{ "apiKey": "..." }`（测试或自定义） | `~/.openfinclaw/config.json` |
 | `HUB_API_URL` | 否 | Hub API 地址 | `https://hub.openfinclaw.ai` |
 | `DATAHUB_GATEWAY_URL` | 否 | DataHub 网关地址 | `https://datahub.openfinclaw.ai` |
 | `REQUEST_TIMEOUT_MS` | 否 | HTTP 请求超时（毫秒） | `60000` |

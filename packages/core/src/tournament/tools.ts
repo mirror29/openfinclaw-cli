@@ -41,7 +41,7 @@ export async function executeTournamentPick(
     agent: params.agent_name,
     userId: params.user_id ?? "anonymous",
     message: `You picked the ${params.agent_name} agent! Tournament results will be tracked.`,
-    note: "Full tournament state tracking is available in OpenClaw plugin mode with SQLite persistence.",
+    note: "Tournament picks are tracked in-session over MCP; durable multi-round state is not persisted by this tool surface.",
   };
 }
 
@@ -69,7 +69,7 @@ export async function executeTournamentLeaderboard(
       { name: "bear", description: "Bearish strategies — defensive, hedging-focused" },
       { name: "contrarian", description: "Contrarian strategies — against-the-crowd, value-seeking" },
     ],
-    message: "Tournament leaderboard with W/L records is available in OpenClaw plugin mode.",
+    message: "Agent roles for the tournament (bull / bear / contrarian). Detailed W/L history is not exposed through this MCP tool.",
     note: "Use tournament_pick to choose an agent, and tournament_result to submit analysis results.",
   };
 }

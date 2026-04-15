@@ -3,15 +3,33 @@
  * @module @openfinclaw/cli/cli
  */
 import {
-  resolveConfigFromEnv,
+  resolveOpenFinClawConfig,
+  getUserConfigFilePath,
   executeFinPrice,
   executeFinKline,
   executeFinCrypto,
   executeFinCompare,
   executeFinSlimSearch,
   executeSkillLeaderboard,
+  executeSkillGetInfo,
+  executeSkillFork,
+  executeSkillListLocal,
+  executeSkillValidate,
+  executeSkillPublish,
+  executeSkillPublishVerify,
+  executeStrategyDailyScan,
+  executeStrategyPriceMonitor,
+  executeStrategyScanHistory,
+  executeStrategyPeriodicReport,
+  executeTournamentPick,
+  executeTournamentLeaderboard,
+  executeTournamentResult,
 } from "@openfinclaw/core";
 
+/**
+ * Parse argv after the subcommand into positional args and `--key` / `--key=value` flags.
+ * @param args - Raw args (e.g. `process.argv.slice(3)`)
+ */
 function parseArgs(args: string[]): { positional: string[]; flags: Record<string, string> } {
   const positional: string[] = [];
   const flags: Record<string, string> = {};
@@ -21,7 +39,15 @@ function parseArgs(args: string[]): { positional: string[]; flags: Record<string
       const [key, ...val] = arg.slice(2).split("=");
       flags[key!] = val.join("=");
     } else if (arg.startsWith("--") && i + 1 < args.length) {
-      flags[arg.slice(2)] = args[++i]!;
+      const next = args[i + 1]!;
+      if (!next.startsWith("--")) {
+        flags[arg.slice(2)] = next;
+        i++;
+      } else {
+        flags[arg.slice(2)] = "true";
+      }
+    } else if (arg.startsWith("--")) {
+      flags[arg.slice(2)] = "true";
     } else {
       positional.push(arg);
     }
@@ -29,13 +55,27 @@ function parseArgs(args: string[]): { positional: string[]; flags: Record<string
   return { positional, flags };
 }
 
+/**
+ * Print structured tool output (JSON).
+ * @param data - Serializable result
+ */
+function printJson(data: unknown): void {
+  console.log(JSON.stringify(data, null, 2));
+}
+
+/**
+ * Run a CLI subcommand.
+ * @param command - First positional after `openfinclaw`
+ * @param args - Remaining argv
+ */
 export async function runCli(command: string, args: string[]) {
   const { positional, flags } = parseArgs(args);
   const outputJson = flags.output === "json";
+  const apiKeyOpt = flags["api-key"];
 
   let config;
   try {
-    config = resolveConfigFromEnv();
+    config = resolveOpenFinClawConfig({ apiKey: apiKeyOpt });
   } catch (err) {
     console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -53,7 +93,7 @@ export async function runCli(command: string, args: string[]) {
           config,
         );
         if (outputJson) {
-          console.log(JSON.stringify(result, null, 2));
+          printJson(result);
         } else {
           console.log(`\n  ${result.symbol} (${result.market})`);
           console.log(`  Price:    ${result.price}`);
@@ -74,7 +114,7 @@ export async function runCli(command: string, args: string[]) {
           config,
         );
         if (outputJson) {
-          console.log(JSON.stringify(result, null, 2));
+          printJson(result);
         } else {
           console.log(`\n  ${result.symbol} (${result.market}) — ${result.count} bars\n`);
           console.log("  Date        Open       High       Low        Close      Volume");
@@ -100,7 +140,7 @@ export async function runCli(command: string, args: string[]) {
           },
           config,
         );
-        console.log(JSON.stringify(result, null, 2));
+        printJson(result);
         break;
       }
 
@@ -111,7 +151,7 @@ export async function runCli(command: string, args: string[]) {
         }
         const result = await executeFinCompare({ symbols: positional[0] }, config);
         if (outputJson) {
-          console.log(JSON.stringify(result, null, 2));
+          printJson(result);
         } else if ("comparison" in result && result.comparison) {
           console.log(`\n  Asset Comparison\n`);
           for (const item of result.comparison as Array<Record<string, unknown>>) {
@@ -140,7 +180,7 @@ export async function runCli(command: string, args: string[]) {
           config,
         );
         if (outputJson) {
-          console.log(JSON.stringify(result, null, 2));
+          printJson(result);
         } else {
           console.log(`\n  Search: "${result.query}" — ${result.count} results\n`);
           for (const r of result.results as Array<Record<string, unknown>>) {
@@ -156,12 +196,13 @@ export async function runCli(command: string, args: string[]) {
       case "leaderboard": {
         const boardType = flags.board ?? "composite";
         const limit = flags.limit ? Number(flags.limit) : 10;
+        const offset = flags.offset ? Number(flags.offset) : 0;
         const result = await executeSkillLeaderboard(
-          { boardType, limit },
+          { boardType, limit, offset },
           config,
         );
         if (outputJson) {
-          console.log(JSON.stringify(result, null, 2));
+          printJson(result);
         } else {
           console.log(`\n  ${result.board} 排行榜 — Top ${result.strategies.length} (共 ${result.total} 个策略)\n`);
           for (const s of result.strategies) {
@@ -177,11 +218,188 @@ export async function runCli(command: string, args: string[]) {
         break;
       }
 
+      case "strategy-info": {
+        const id = positional[0];
+        if (!id) {
+          console.error("Usage: openfinclaw strategy-info <strategyId>");
+          process.exit(1);
+        }
+        printJson(await executeSkillGetInfo({ strategyId: id }, config));
+        break;
+      }
+
+      case "fork": {
+        const strategyId = positional[0];
+        if (!strategyId) {
+          console.error("Usage: openfinclaw fork <strategyId> [--name <n>] [--target-dir <path>]");
+          process.exit(1);
+        }
+        printJson(
+          await executeSkillFork(
+            { strategyId, name: flags.name, targetDir: flags["target-dir"] },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "list-strategies": {
+        printJson(await executeSkillListLocal({}, config));
+        break;
+      }
+
+      case "validate": {
+        const dirPath = positional[0];
+        if (!dirPath) {
+          console.error("Usage: openfinclaw validate <dirPath>");
+          process.exit(1);
+        }
+        printJson(await executeSkillValidate({ dirPath }, config));
+        break;
+      }
+
+      case "publish": {
+        const filePath = positional[0];
+        if (!filePath) {
+          console.error("Usage: openfinclaw publish <zipPath> [--visibility public|private|unlisted]");
+          process.exit(1);
+        }
+        printJson(
+          await executeSkillPublish(
+            { filePath, visibility: flags.visibility },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "publish-verify": {
+        printJson(
+          await executeSkillPublishVerify(
+            {
+              submissionId: flags["submission-id"],
+              backtestTaskId: flags["backtest-task-id"],
+            },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "daily-scan": {
+        const includePrice = flags["include-price"] !== "false";
+        printJson(
+          await executeStrategyDailyScan(
+            {
+              strategyId: flags["strategy-id"],
+              includePrice,
+            },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "price-monitor": {
+        printJson(
+          await executeStrategyPriceMonitor(
+            {
+              threshold: flags.threshold ? Number(flags.threshold) : undefined,
+              strategyId: flags["strategy-id"],
+            },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "scan-history": {
+        printJson(
+          await executeStrategyScanHistory(
+            {
+              scanType: flags["scan-type"] as
+                | "daily_scan"
+                | "price_monitor"
+                | "weekly_report"
+                | "monthly_report"
+                | undefined,
+              limit: flags.limit ? Number(flags.limit) : undefined,
+            },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "periodic-report": {
+        const period = (flags.period ?? positional[0]) as "weekly" | "monthly" | undefined;
+        if (period !== "weekly" && period !== "monthly") {
+          console.error("Usage: openfinclaw periodic-report <weekly|monthly>  (or --period weekly|monthly)");
+          process.exit(1);
+        }
+        printJson(await executeStrategyPeriodicReport({ period }, config));
+        break;
+      }
+
+      case "tournament-pick": {
+        const agent = (flags.agent ?? positional[0]) as string | undefined;
+        if (!agent || !["bull", "bear", "contrarian"].includes(agent)) {
+          console.error("Usage: openfinclaw tournament-pick <bull|bear|contrarian> [--user-id <id>]");
+          process.exit(1);
+        }
+        printJson(
+          await executeTournamentPick(
+            { agent_name: agent, user_id: flags["user-id"] },
+            config,
+          ),
+        );
+        break;
+      }
+
+      case "tournament-leaderboard": {
+        printJson(await executeTournamentLeaderboard({}, config));
+        break;
+      }
+
+      case "tournament-result": {
+        const roundId = flags["round-id"] ?? positional[0];
+        const agentName = flags.agent ?? positional[1];
+        const thesis = flags.thesis ?? positional[2];
+        const confRaw = flags.confidence ?? positional[3];
+        if (!roundId || !agentName || !thesis || confRaw === undefined) {
+          console.error(
+            "Usage: openfinclaw tournament-result --round-id <id> --agent <bull|bear|contrarian> " +
+              "--thesis <text> --confidence <0-100> [--entry-price ...] [--exit-price ...] ...",
+          );
+          process.exit(1);
+        }
+        const confidence = Number(confRaw);
+        printJson(
+          await executeTournamentResult(
+            {
+              round_id: roundId,
+              agent_name: agentName,
+              thesis,
+              confidence,
+              entry_price: flags["entry-price"] ? Number(flags["entry-price"]) : undefined,
+              exit_price: flags["exit-price"] ? Number(flags["exit-price"]) : undefined,
+              stop_loss: flags["stop-loss"] ? Number(flags["stop-loss"]) : undefined,
+              sharpe: flags.sharpe ? Number(flags.sharpe) : undefined,
+              max_drawdown: flags["max-drawdown"] ? Number(flags["max-drawdown"]) : undefined,
+              total_return: flags["total-return"] ? Number(flags["total-return"]) : undefined,
+            },
+            config,
+          ),
+        );
+        break;
+      }
+
       case "doctor": {
         console.log("\n  OpenFinClaw Doctor\n");
         console.log(
           `  API Key:      ${config.apiKey ? "configured (" + config.apiKey.slice(0, 8) + "...)" : "NOT SET"}`,
         );
+        console.log(`  Config file:  ${getUserConfigFilePath()} (optional; from init)`);
         console.log(`  Hub URL:      ${config.hubApiUrl}`);
         console.log(`  DataHub URL:  ${config.datahubGatewayUrl}`);
         console.log(`  Timeout:      ${config.requestTimeoutMs}ms`);

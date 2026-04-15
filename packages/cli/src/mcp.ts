@@ -6,7 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import {
-  resolveConfigFromEnv,
+  resolveOpenFinClawConfig,
   executeFinPrice,
   executeFinKline,
   executeFinCrypto,
@@ -64,7 +64,7 @@ function wrapHandler<P>(
 }
 
 export async function startMcpServer() {
-  const config = resolveConfigFromEnv();
+  const config = resolveOpenFinClawConfig();
   const groups = parseToolGroups(process.argv);
   const server = new McpServer({ name: "openfinclaw", version: "0.1.0" });
 

@@ -1,11 +1,13 @@
 {
   "name": "openfinclaw-cli-monorepo",
   "private": true,
+  "version": "0.2.3",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @openfinclaw/core build && pnpm --filter @openfinclaw/cli build",
     "test": "pnpm -r test",
-    "dev": "pnpm --filter @openfinclaw/cli dev"
+    "dev": "pnpm --filter @openfinclaw/cli dev",
+    "sync-versions": "node scripts/align-package-versions.mjs"
   },
   "engines": {
     "node": ">=18.0.0"

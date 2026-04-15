@@ -6,7 +6,11 @@
 // Config
 export {
   type OpenFinClawConfig,
+  type ResolveOpenFinClawConfigOptions,
   resolveConfigFromEnv,
+  resolveOpenFinClawConfig,
+  getUserConfigFilePath,
+  readApiKeyFromConfigFile,
   DEFAULT_HUB_API_URL,
   DEFAULT_DATAHUB_GATEWAY_URL,
   DEFAULT_TIMEOUT_MS,

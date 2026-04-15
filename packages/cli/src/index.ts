@@ -54,15 +54,34 @@ function printHelp() {
 
     策略管理:
       leaderboard               查看排行榜
+      strategy-info <id>        从 Hub 获取策略详情
+      fork <strategyId>         Fork 策略到本地 [--name] [--target-dir]
+      list-strategies           列出本地策略
+      validate <dir>              校验策略目录 (FEP v2.0)
+      publish <zip>             发布策略 ZIP [--visibility]
+      publish-verify              查询发布/回测状态 [--submission-id] [--backtest-task-id]
+
+    定时与竞赛:
+      daily-scan                  [--strategy-id] [--include-price false]
+      price-monitor               [--threshold] [--strategy-id]
+      scan-history                [--scan-type] [--limit]
+      periodic-report <weekly|monthly>  (或 --period)
+      tournament-pick <agent>     bull | bear | contrarian [--user-id]
+      tournament-leaderboard
+      tournament-result           使用 --round-id --agent --thesis --confidence 等 flags
 
     系统:
-      init                      交互式配置向导 (多平台 MCP 配置)
+      init                      交互式配置向导 (MCP + ~/.openfinclaw/config.json)
       update                    更新到最新版本
       serve [--tools=<groups>]  启动 MCP Server (Agent 平台连接用)
       doctor                    诊断配置和连接状态
 
+  API Key 解析优先级 (CLI / serve):
+    1) --api-key   2) 环境变量 OPENFINCLAW_API_KEY   3) ~/.openfinclaw/config.json (init 写入)
+    MCP 客户端子进程通常使用各平台 mcp.json 里的 env，不修改当前 shell；终端未 export 时可用配置文件。
+
   选项:
-    --api-key <key>             API Key (或设置 OPENFINCLAW_API_KEY 环境变量)
+    --api-key <key>             本次命令使用的 API Key
     --output <format>           输出格式: table (默认), json
     -h, --help                  显示帮助
     -v, --version               显示版本
@@ -74,10 +93,9 @@ function printHelp() {
   示例:
     $ openfinclaw price AAPL
     $ openfinclaw kline BTC/USDT --limit 30
-    $ openfinclaw compare AAPL,GOOGL,MSFT
-    $ openfinclaw search "tesla"
+    $ openfinclaw strategy-info <uuid>
     $ openfinclaw init
-    $ openfinclaw update
+    $ openfinclaw doctor
 
   文档: https://github.com/mirror29/openfinclaw-cli
 `);

@@ -2,9 +2,10 @@
  * Interactive setup wizard — configures MCP on multiple agent platforms.
  * @module @openfinclaw/cli/init
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
+import { getUserConfigFilePath } from "@openfinclaw/core";
 
 // ─── Platform Definitions ───────────────────────────────────────────
 
@@ -128,6 +129,37 @@ function writeYamlConfig(
   return fullPath;
 }
 
+/**
+ * Persist API key to `~/.openfinclaw/config.json` so terminal `openfinclaw` works without `export`.
+ * Unix: chmod 600 on the file.
+ * @param apiKey - Hub API key
+ * @returns Written file path
+ */
+function writeUserConfigFile(apiKey: string): string {
+  const fullPath = getUserConfigFilePath();
+  mkdirSync(dirname(fullPath), { recursive: true });
+
+  let existing: Record<string, unknown> = {};
+  if (existsSync(fullPath)) {
+    try {
+      existing = JSON.parse(readFileSync(fullPath, "utf-8")) as Record<string, unknown>;
+    } catch {
+      existing = {};
+    }
+  }
+  existing.apiKey = apiKey;
+
+  writeFileSync(fullPath, JSON.stringify(existing, null, 2) + "\n", "utf-8");
+  if (process.platform !== "win32") {
+    try {
+      chmodSync(fullPath, 0o600);
+    } catch {
+      /* ignore chmod failures */
+    }
+  }
+  return fullPath;
+}
+
 // ─── Main Wizard ─────────────────────────────────────────────────────
 
 export async function runInit() {
@@ -229,6 +261,15 @@ export async function runInit() {
         `${platform.label} 写入失败: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
+  }
+
+  try {
+    const userConfigPath = writeUserConfigFile(apiKey as string);
+    clack.log.success(`CLI 配置已保存  →  ${userConfigPath}（终端可直接运行 openfinclaw，无需 export）`);
+  } catch (err) {
+    clack.log.warn(
+      `写入 ~/.openfinclaw/config.json 失败: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   // ── Summary ──

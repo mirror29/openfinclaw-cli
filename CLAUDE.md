@@ -19,7 +19,7 @@
 
 - **Core is platform-agnostic**: No OpenClaw, MCP, or agent framework imports in `@openfinclaw/core`. All tool logic is exported as pure functions + JSON schemas.
 - **CLI is a thin adapter**: `@openfinclaw/cli` wraps core functions with MCP SDK (Zod schemas) and CLI formatting. Keep it minimal.
-- **Config via injection**: Core functions accept `OpenFinClawConfig` interface. Environment variable parsing lives in `resolveConfigFromEnv()`.
+- **Config via injection**: Core functions accept `OpenFinClawConfig` interface. Resolution lives in `resolveOpenFinClawConfig()` / `resolveConfigFromEnv()`: `--api-key` (CLI) → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json` (written by `init`; override path with `OPENFINCLAW_CONFIG_PATH`).
 
 ## Tool Groups
 
@@ -74,6 +74,7 @@ Tools are organized into 4 groups that can be loaded independently via `--tools=
 ## Publishing
 
 - **Always use `pnpm publish`**，不要用 `npm publish`。pnpm 会自动将 `workspace:*` 替换为实际版本号。
+- **版本号**：根目录 `package.json` 的 `version` 为仓库统一版本；`@openfinclaw/core` 与 `@openfinclaw/cli` 的 `version` 须与其一致。修改根目录版本后运行 `pnpm sync-versions` 写回各包（或手动同步三者）。
 - 发布顺序：先 `packages/core`，再 `packages/cli`（cli 依赖 core）。
 - 发布前确保 `pnpm build` 通过。
 - 每次 bump 版本后才能发布，不允许覆盖已发布版本。
@@ -82,7 +83,7 @@ Tools are organized into 4 groups that can be loaded independently via `--tools=
 ### pnpm workspace 协议
 
 - 本地开发时，`packages/cli/package.json` 中对 core 的依赖使用 `"@openfinclaw/core": "workspace:*"`。
-- `pnpm publish` 会自动将 `workspace:*` 替换为实际版本号（如 `^0.1.0`）。
+- `pnpm publish` 会自动将 `workspace:*` 替换为实际版本号（如 `^0.2.3`）。
 - 如果使用 `npm publish`，`workspace:*` 不会被替换，导致用户安装时报 `EUNSUPPORTEDPROTOCOL`。
 
 ## Coding Style

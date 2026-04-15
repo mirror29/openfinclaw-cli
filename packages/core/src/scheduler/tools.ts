@@ -140,7 +140,8 @@ export async function executeStrategyScanHistory(
   return {
     scanType: params.scanType ?? "all",
     limit: params.limit ?? 10,
-    message: "Scan history is stored in SQLite when running as OpenClaw plugin. In MCP mode, scan results are returned directly to the agent.",
+    message:
+      "Durable scan history is not persisted by this MCP tool; each invocation returns in-session context for the agent. Use OpenFinClaw via MCP as the supported integration.",
     history: [],
   };
 }
@@ -182,6 +183,6 @@ export async function executeStrategyPeriodicReport(
       type: s.type,
       createdAt: s.createdAt,
     })),
-    note: `${params.period === "monthly" ? "Monthly" : "Weekly"} report generated. Full backtest ranking and scan history available in OpenClaw plugin mode.`,
+    note: `${params.period === "monthly" ? "Monthly" : "Weekly"} report generated from local strategy metadata. Extended analytics may be available on the Hub for your account.`,
   };
 }

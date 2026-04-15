@@ -45,6 +45,9 @@ The wizard will:
 - Let you choose which tool groups to enable
 - Auto-detect installed agent platforms
 - Write MCP config to each selected platform
+- Save `~/.openfinclaw/config.json` (API key only) so terminal CLI works without `export` (Unix: file mode 600)
+
+**CLI vs MCP:** Agent platforms load the API key from their MCP `env` block. That does **not** change your shell profile. A shell `OPENFINCLAW_API_KEY` is still visible to any process you start in that terminal—this is normal. Resolution order for `openfinclaw` / `serve` is: `--api-key` → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json`.
 
 ### 2. Manual Configuration
 
@@ -67,8 +70,14 @@ Add to your agent platform's MCP config:
 ### 3. CLI Mode (Human Use)
 
 ```bash
-# Set your API key
+# Option A: use key from init (writes ~/.openfinclaw/config.json)
+npx @openfinclaw/cli init
+
+# Option B: set environment variable for this session
 export OPENFINCLAW_API_KEY=fch_your_key_here
+
+# Option C: pass API key for a single command (optional)
+npx @openfinclaw/cli compare AAPL,MSFT --api-key fch_your_key_here
 
 # Query prices
 npx @openfinclaw/cli price AAPL
@@ -166,13 +175,9 @@ mcp_servers:
 </details>
 
 <details>
-<summary><b>OpenClaw</b> — MCP config or native plugin</summary>
+<summary><b>OpenClaw</b></summary>
 
-OpenClaw supports OpenFinClaw in two ways:
-
-1. **Native plugin** (recommended for OpenClaw users): Install `openfinclaw-strategy` extension in OpenClaw for full integration (SQLite persistence, cron scheduling, dashboard).
-
-2. **MCP mode**: Add to OpenClaw's MCP config:
+Add OpenFinClaw to your MCP config (e.g. `~/.openclaw/mcp.json`):
 ```json
 {
   "mcpServers": {
@@ -246,7 +251,8 @@ The project is a monorepo with two packages:
 
 | Variable | Required | Description | Default |
 |----------|----------|-------------|---------|
-| `OPENFINCLAW_API_KEY` | Yes | API key for Hub and DataHub (`fch_` prefix) | — |
+| `OPENFINCLAW_API_KEY` | One of key sources | API key for Hub and DataHub (`fch_` prefix). Ignored if `--api-key` is set; otherwise falls back to `~/.openfinclaw/config.json` after init. | — |
+| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "..." }` (tests / custom layout) | `~/.openfinclaw/config.json` |
 | `HUB_API_URL` | No | Hub API URL | `https://hub.openfinclaw.ai` |
 | `DATAHUB_GATEWAY_URL` | No | DataHub Gateway URL | `https://datahub.openfinclaw.ai` |
 | `REQUEST_TIMEOUT_MS` | No | HTTP request timeout (ms) | `60000` |

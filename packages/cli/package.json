@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Cross-platform financial tools for AI agents — MCP server + CLI",
   "license": "MIT",
   "type": "module",
@@ -38,7 +38,7 @@
   "dependencies": {
     "@clack/prompts": "^0.9.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@openfinclaw/core": "^0.2.0",
+    "@openfinclaw/core": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {
