@@ -8,6 +8,74 @@ import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { getUserConfigFilePath } from "@openfinclaw/core";
 
+// ─── Terminal Theme (no extra deps) ───────────────────────────────────
+
+/**
+ * ANSI color helper (TTY-safe). If not a TTY, returns the raw string.
+ * @param code - ANSI SGR code list (e.g. "1" for bold, "36" for cyan)
+ * @param input - Text to wrap
+ */
+function sgr(code: string, input: string): string {
+  if (!process.stdout.isTTY) return input;
+  return `\u001b[${code}m${input}\u001b[0m`;
+}
+
+/** @param s - text */
+function dim(s: string): string {
+  return sgr("2", s);
+}
+
+/** @param s - text */
+function bold(s: string): string {
+  return sgr("1", s);
+}
+
+/** @param s - text */
+function cyan(s: string): string {
+  return sgr("36", s);
+}
+
+/** @param s - text */
+function magenta(s: string): string {
+  return sgr("35", s);
+}
+
+/** @param s - text */
+function green(s: string): string {
+  return sgr("32", s);
+}
+
+/** @param s - text */
+function yellow(s: string): string {
+  return sgr("33", s);
+}
+
+/** @param s - text */
+function red(s: string): string {
+  return sgr("31", s);
+}
+
+/**
+ * Render a compact geek-style banner.
+ * @param version - CLI package version string, optional
+ */
+function renderBanner(version?: string): string {
+  // clack 的 intro 会自带边框/前缀，这里避免再绘制外框，保持极简、对齐稳定
+  const v = version ? ` ${dim(`v${version}`)}` : "";
+  const title = `${magenta("OpenFinClaw")} ${dim("·")} ${dim("MCP")} ${dim("·")} ${cyan("init")}${v}`;
+  const subtitle = dim("跨平台 MCP 配置向导（写入各 Agent/IDE 的 mcp.json）");
+  return `${bold(title)}\n${subtitle}`;
+}
+
+/**
+ * Format a right-arrow path mapping (label -> path), keeping it readable in terminals.
+ * @param label - Platform label
+ * @param p - Target path
+ */
+function formatPathWrite(label: string, p: string): string {
+  return `${bold(label)}  ${dim("→")}  ${cyan(p)}`;
+}
+
 // ─── Platform Definitions ───────────────────────────────────────────
 
 interface PlatformDef {
@@ -322,16 +390,16 @@ export async function runInit() {
     return;
   }
 
-  clack.intro("OpenFinClaw 配置向导");
+  clack.intro(renderBanner());
 
   // ── Step 1: Select platforms ──
-  clack.log.step("选择要配置的 AI Agent 平台");
+  clack.log.step(`${cyan("Step 1")} 选择要配置的 AI Agent 平台`);
   const platformStates = detectPlatformStates();
   const detected = selectDetectedPlatforms(platformStates);
 
   const platforms = await clack.multiselect({
     message:
-      "结合本机安装痕迹与 MCP 配置文件自动勾选（空格选择，回车确认）",
+      `${dim("自动检测安装痕迹与现有 MCP 配置（空格选择，回车确认）")}`,
     options: PLATFORMS.map((p) => ({
       value: p.value,
       label: p.label,
@@ -340,58 +408,58 @@ export async function runInit() {
     initialValues: [...detected],
   });
   if (clack.isCancel(platforms) || (platforms as string[]).length === 0) {
-    clack.cancel("已取消");
+    clack.cancel(dim("已取消"));
     process.exit(0);
   }
 
   // ── Step 2: Select tool groups ──
-  clack.log.step("选择要启用的工具组");
+  clack.log.step(`${cyan("Step 2")} 选择要启用的工具组`);
 
   const toolGroups = await clack.multiselect({
-    message: "按需选择，减少不必要的 Token 消耗",
+    message: `${dim("按需选择，减少不必要的 Token 消耗")}`,
     options: [
-      { value: "datahub", label: "📊 datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
-      { value: "strategy", label: "🧠 strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
+      { value: "datahub", label: "datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
+      { value: "strategy", label: "strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
     ],
     initialValues: ["datahub", "strategy"],
   });
   if (clack.isCancel(toolGroups)) {
-    clack.cancel("已取消");
+    clack.cancel(dim("已取消"));
     process.exit(0);
   }
 
   // ── Step 3: Enter API Key ──
-  clack.log.step("输入 API Key");
+  clack.log.step(`${cyan("Step 3")} 输入 API Key`);
 
   // Show where to get the key
-  clack.log.info("还没有 API Key? 免费获取: https://hub.openfinclaw.ai");
+  clack.log.info(`${dim("还没有 API Key?")} ${cyan("https://hub.openfinclaw.ai")}`);
 
   const apiKey = await clack.password({
-    message: "请输入 API Key (fch_ 开头):",
+    message: `${dim("请输入 API Key（通常以 fch_ 开头）")}`,
   });
   if (clack.isCancel(apiKey) || !apiKey) {
-    clack.cancel("已取消");
+    clack.cancel(dim("已取消"));
     process.exit(0);
   }
 
   // Validate key format
   if (!(apiKey as string).startsWith("fch_")) {
-    clack.log.warn("API Key 应以 fch_ 开头，请确认是否正确");
+    clack.log.warn(`${yellow("⚠")} API Key 通常以 fch_ 开头，请确认是否正确`);
     const confirm = await clack.select({
-      message: "仍然继续?",
+      message: `${dim("仍然继续？")}`,
       options: [
         { value: "yes", label: "继续使用这个 Key" },
         { value: "no", label: "重新输入" },
       ],
     });
     if (clack.isCancel(confirm) || confirm === "no") {
-      clack.cancel("已取消");
+      clack.cancel(dim("已取消"));
       process.exit(0);
     }
   }
 
   // ── Step 4: Write configs ──
-  clack.log.step("正在写入配置文件...");
+  clack.log.step(`${cyan("Step 4")} 写入配置文件`);
 
   const entry = buildMcpEntry(toolGroups as string[], apiKey as string);
   let successCount = 0;
@@ -404,34 +472,39 @@ export async function runInit() {
         platform.format === "yaml"
           ? writeYamlConfig(platform, entry)
           : writeJsonConfig(platform, entry);
-      clack.log.success(`${platform.label}  →  ${writtenPath}`);
+      clack.log.success(formatPathWrite(platform.label, writtenPath));
       successCount++;
     } catch (err) {
       clack.log.error(
-        `${platform.label} 写入失败: ${err instanceof Error ? err.message : String(err)}`,
+        `${red("✖")} ${platform.label} 写入失败: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
   try {
     const userConfigPath = writeUserConfigFile(apiKey as string);
-    clack.log.success(`CLI 配置已保存  →  ${userConfigPath}（终端可直接运行 openfinclaw，无需 export）`);
+    clack.log.success(
+      `${green("✔")} ${bold("CLI 配置已保存")}  ${dim("→")}  ${cyan(userConfigPath)} ${dim("（终端可直接运行 openfinclaw，无需 export）")}`,
+    );
   } catch (err) {
     clack.log.warn(
-      `写入 ~/.openfinclaw/config.json 失败: ${err instanceof Error ? err.message : String(err)}`,
+      `${yellow("⚠")} 写入 ~/.openfinclaw/config.json 失败: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
   // ── Summary ──
   const s = clack.spinner();
-  s.start("验证配置...");
+  s.start(`${dim("验证配置...")}`);
   await new Promise((r) => setTimeout(r, 800));
-  s.stop(`${successCount} 个平台配置完成`);
+  s.stop(`${green("✔")} ${bold(`${successCount} 个平台`)} 配置完成`);
 
   clack.outro(
-    "试试在你的 Agent 中说：「查询 AAPL 的价格」\n\n"
-    + "  文档: https://github.com/mirror29/openfinclaw-cli\n"
-    + "  获取 API Key: https://hub.openfinclaw.ai",
+    [
+      `${bold("Next")} ${dim("→")} 试试在你的 Agent 中说：${cyan("“查询 AAPL 的价格”")}`,
+      "",
+      `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
+      `${dim("API Key")}   ${cyan("https://hub.openfinclaw.ai")}`,
+    ].join("\n"),
   );
 }
 
