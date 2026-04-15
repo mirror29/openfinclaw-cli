@@ -34,13 +34,23 @@ export async function fetchStrategyInfo(
   rawId: string,
 ): Promise<StrategyResult<HubStrategyInfo>> {
   const strategyId = parseStrategyId(rawId);
-  const { status, data } = await hubApiRequest(config, "GET", `/skill/info/${strategyId}`);
+  const { status, data } = await hubApiRequest(config, "GET", `/skill/public/${strategyId}`);
 
   if (status >= 400) {
-    const msg =
-      typeof data === "object" && data !== null && "message" in data
-        ? (data as Record<string, unknown>).message
-        : `HTTP ${status}`;
+    let msg = `HTTP ${status}`;
+    if (typeof data === "string" && data.startsWith("{")) {
+      try {
+        const json = JSON.parse(data) as Record<string, unknown>;
+        const errObj = json.error as Record<string, unknown> | undefined;
+        msg = (errObj?.message as string) || (errObj?.code as string) || msg;
+      } catch {
+        msg = data.slice(0, 200);
+      }
+    } else if (typeof data === "object" && data !== null) {
+      const errObj = data as Record<string, unknown>;
+      const inner = errObj.error as Record<string, unknown> | undefined;
+      msg = (inner?.message as string) || (errObj.message as string) || msg;
+    }
     return { success: false, error: `Failed to fetch strategy info: ${msg}` };
   }
 
@@ -61,13 +71,23 @@ export async function forkStrategy(
   const strategyId = parseStrategyId(rawId);
 
   // Step 1: Call the fork API
-  const { status, data } = await hubApiRequest(config, "POST", `/skill/fork/${strategyId}`);
+  const { status, data } = await hubApiRequest(config, "POST", `/skill/entries/${strategyId}/fork-and-download`);
 
   if (status >= 400) {
-    const msg =
-      typeof data === "object" && data !== null && "message" in data
-        ? (data as Record<string, unknown>).message
-        : `HTTP ${status}`;
+    let msg = `HTTP ${status}`;
+    if (typeof data === "string" && data.startsWith("{")) {
+      try {
+        const json = JSON.parse(data) as Record<string, unknown>;
+        const errObj = json.error as Record<string, unknown> | undefined;
+        msg = (errObj?.message as string) || (errObj?.code as string) || msg;
+      } catch {
+        msg = data.slice(0, 200);
+      }
+    } else if (typeof data === "object" && data !== null) {
+      const errObj = data as Record<string, unknown>;
+      const inner = errObj.error as Record<string, unknown> | undefined;
+      msg = (inner?.message as string) || (errObj.message as string) || msg;
+    }
     return { success: false, error: `Fork failed: ${msg}` };
   }
 
