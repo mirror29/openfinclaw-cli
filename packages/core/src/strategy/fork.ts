@@ -4,7 +4,8 @@
  * @module @openfinclaw/core/strategy/fork
  */
 import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import type AdmZipType from "adm-zip";
 import type { OpenFinClawConfig } from "../config.js";
 import type { ForkAndDownloadResponse, ForkMeta, HubStrategyInfo } from "../types.js";
 import { hubApiRequest } from "./client.js";
@@ -166,18 +167,18 @@ export async function forkStrategy(
     : await createDateDir();
 
   const shortId = strategyId.slice(0, 8);
-  const dirName = options?.name
-    ? options.name.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60)
-    : generateForkDirName(shortId, forkResp.entry.name);
+  const dirName = resolveForkDirName(options?.name, shortId, forkResp.entry.name);
 
   const localPath = join(dateDir, dirName);
   await mkdir(localPath, { recursive: true });
 
-  // Step 4: Extract ZIP using adm-zip (dynamic import since it's optional)
+  // Step 4: Extract ZIP using adm-zip (dynamic import since it's optional).
+  // If every entry shares a common top-level directory, strip it so that
+  // fep.yaml lives at `localPath/fep.yaml` (not `localPath/<inner>/fep.yaml`).
   try {
     const AdmZip = (await import("adm-zip")).default;
     const zip = new AdmZip(zipBuffer);
-    zip.extractAllTo(localPath, true);
+    await extractZipFlat(zip, localPath);
   } catch (err) {
     // Fallback: save the raw ZIP file
     await writeFile(join(localPath, "strategy.zip"), zipBuffer);
@@ -226,4 +227,66 @@ function buildForkMeta(
     forkEntryId: forkResp.entry.id,
     forkEntrySlug: forkResp.entry.slug,
   };
+}
+
+/**
+ * Resolve a safe fork directory name.
+ * When the user-supplied name sanitizes to empty / all dashes (e.g. pure Chinese
+ * characters), fall back to the deterministic `generateForkDirName` helper so we
+ * never produce an unusable directory like `-----------------`.
+ * @param userName - Optional user-provided fork name
+ * @param shortId - 8-char source strategy ID prefix
+ * @param fallbackName - Remote entry name used by `generateForkDirName`
+ */
+function resolveForkDirName(
+  userName: string | undefined,
+  shortId: string,
+  fallbackName: string,
+): string {
+  if (userName) {
+    const sanitized = userName.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60);
+    if (sanitized && !/^-+$/.test(sanitized)) return sanitized;
+  }
+  return generateForkDirName(shortId, fallbackName);
+}
+
+/**
+ * Extract a ZIP into `targetDir`, stripping a common top-level directory if all
+ * entries share one. This ensures `fep.yaml` lands at the strategy root even
+ * when Hub wraps the package in an inner folder (e.g. `sinopec-dca/fep.yaml`).
+ * @param zip - Loaded AdmZip instance
+ * @param targetDir - Absolute destination directory
+ */
+async function extractZipFlat(
+  zip: AdmZipType,
+  targetDir: string,
+): Promise<void> {
+  const entries = zip.getEntries().filter((e) => !!e.entryName);
+  if (entries.length === 0) return;
+
+  // Detect common top-level directory: first path segment shared by every entry.
+  const firstTop = entries[0]!.entryName.split("/")[0] ?? "";
+  const hasRootFile = entries.some(
+    (e) => !e.isDirectory && !e.entryName.includes("/"),
+  );
+  const allShareTop =
+    !hasRootFile &&
+    !!firstTop &&
+    entries.every((e) => {
+      const top = e.entryName.split("/")[0] ?? "";
+      return top === firstTop;
+    });
+  const stripLen = allShareTop ? firstTop.length + 1 : 0;
+
+  for (const entry of entries) {
+    const rel = entry.entryName.slice(stripLen);
+    if (!rel) continue;
+    const outPath = join(targetDir, rel);
+    if (entry.isDirectory) {
+      await mkdir(outPath, { recursive: true });
+    } else {
+      await mkdir(dirname(outPath), { recursive: true });
+      await writeFile(outPath, entry.getData());
+    }
+  }
 }
