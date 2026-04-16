@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { color, sym } from "./styles.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 function getVersion(): string {
@@ -37,58 +38,63 @@ if (!command || command === "serve") {
   await runCli(command, process.argv.slice(3));
 }
 
+/**
+ * Print a styled help message with grouped commands and examples.
+ */
 function printHelp() {
-  console.log(`
-  OpenFinClaw — 跨平台金融工具 (MCP Server + CLI)
+  const h = (s: string) => color.boldCyan(s);
+  const cmd = (s: string) => color.bold(s);
+  const dim = color.gray;
+  const green = color.green;
 
-  用法:
-    openfinclaw <command> [options]
-
-  命令:
-    行情数据:
-      price <symbol>            查询实时价格 (股票/加密/指数)
-      kline <symbol>            获取 K线/OHLCV 数据
-      crypto <action>           加密市场数据 (ticker/ohlcv/trending/...)
-      compare <symbols>         多资产价格对比 (逗号分隔)
-      search <query>            搜索代码/名称
-
-    策略管理:
-      leaderboard               查看排行榜
-      strategy-info <id>        从 Hub 获取策略详情
-      fork <strategyId>         Fork 策略到本地 [--name] [--target-dir]
-      list-strategies           列出本地策略
-      validate <dir>              校验策略目录 (FEP v2.0)
-      publish <zip>             发布策略 ZIP [--visibility]
-      publish-verify              查询发布/回测状态 [--submission-id] [--backtest-task-id]
-
-    系统:
-      init                      交互式配置向导 (MCP + ~/.openfinclaw/config.json)
-      update                    更新到最新版本
-      serve [--tools=<groups>]  启动 MCP Server (Agent 平台连接用)
-      doctor                    诊断配置和连接状态
-
-  API Key 解析优先级 (CLI / serve):
-    1) --api-key   2) 环境变量 OPENFINCLAW_API_KEY   3) ~/.openfinclaw/config.json (init 写入)
-    MCP 客户端子进程通常使用各平台 mcp.json 里的 env，不修改当前 shell；终端未 export 时可用配置文件。
-
-  选项:
-    --api-key <key>             本次命令使用的 API Key
-    --output <format>           输出格式: table (默认), json
-    -h, --help                  显示帮助
-    -v, --version               显示版本
-
-  MCP Server 模式:
-    openfinclaw serve                         启动全部工具 (datahub + strategy)
-    openfinclaw serve --tools=datahub         只启动行情数据工具
-    openfinclaw serve --tools=datahub,strategy  同上（显式列出两组）
-
-  示例:
-    $ openfinclaw price AAPL
-    $ openfinclaw kline BTC/USDT --limit 30
-    $ openfinclaw strategy-info <uuid>
-    $ openfinclaw init
-    $ openfinclaw doctor
-
-  文档: https://github.com/mirror29/openfinclaw-cli
-`);
+  const lines = [
+    "",
+    `  ${color.boldGreen("OpenFinClaw")}  ${dim(`v${getVersion()}`)}`,
+    `  ${dim("跨平台金融工具 · MCP Server + CLI")}`,
+    "",
+    `  ${h("用法")}`,
+    `    ${cmd("openfinclaw")} ${dim("<command>")} ${dim("[options]")}`,
+    "",
+    `  ${h("行情数据")}`,
+    `    ${cmd("price")}        ${dim("<symbol>")}              实时价格 (股票/加密/指数)`,
+    `    ${cmd("kline")}        ${dim("<symbol>")} ${dim("[--limit N]")}   K线/OHLCV 数据`,
+    `    ${cmd("crypto")}       ${dim("<action>")}              加密市场数据 (ticker/ohlcv/trending/...)`,
+    `    ${cmd("compare")}      ${dim("<s1,s2,...>")}           多资产价格对比`,
+    `    ${cmd("search")}       ${dim("<query>")}               搜索代码/名称`,
+    "",
+    `  ${h("策略管理")}`,
+    `    ${cmd("leaderboard")} ${dim("[--board T] [--limit]")}  查看排行榜`,
+    `    ${cmd("strategy-info")} ${dim("<id>")}                 从 Hub 获取策略详情`,
+    `    ${cmd("fork")}         ${dim("<id>")}                   Fork 策略到本地`,
+    `    ${cmd("list-strategies")}                       列出本地策略`,
+    `    ${cmd("validate")}     ${dim("<dir>")}                 校验策略包 (FEP v2.0)`,
+    `    ${cmd("publish")}      ${dim("<zip>")}                 发布策略 ZIP`,
+    `    ${cmd("publish-verify")} ${dim("--submission-id …")}  查询发布/回测状态`,
+    "",
+    `  ${h("系统")}`,
+    `    ${cmd("init")}                                     交互式配置向导`,
+    `    ${cmd("update")}                                   升级到最新版本`,
+    `    ${cmd("serve")} ${dim("[--tools=<groups>]")}            启动 MCP Server`,
+    `    ${cmd("doctor")}                                  诊断配置与连接`,
+    "",
+    `  ${h("选项")}`,
+    `    ${dim("--api-key <key>")}          覆盖 API Key`,
+    `    ${dim("--output json")}            以 JSON 输出（便于管道处理）`,
+    `    ${dim("-h, --help")}               显示帮助`,
+    `    ${dim("-v, --version")}            显示版本`,
+    "",
+    `  ${h("API Key 解析顺序")}`,
+    `    ${dim("1.")} --api-key   ${dim("2.")} OPENFINCLAW_API_KEY   ${dim("3.")} ~/.openfinclaw/config.json`,
+    "",
+    `  ${h("示例")}`,
+    `    ${green("$")} openfinclaw ${cmd("price")} AAPL`,
+    `    ${green("$")} openfinclaw ${cmd("kline")} BTC/USDT --limit 30`,
+    `    ${green("$")} openfinclaw ${cmd("leaderboard")} --limit 10`,
+    `    ${green("$")} openfinclaw ${cmd("fork")} <uuid>`,
+    `    ${green("$")} openfinclaw ${cmd("doctor")}`,
+    "",
+    `  ${dim(`${sym.bullet} 文档:`)} ${color.cyan("https://github.com/mirror29/openfinclaw-cli")}`,
+    "",
+  ];
+  console.log(lines.join("\n"));
 }

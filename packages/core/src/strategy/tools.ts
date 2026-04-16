@@ -41,8 +41,11 @@ export async function executeSkillLeaderboard(
   const limit = Math.min(params.limit ?? 20, 100);
   const offset = params.offset ?? 0;
 
-  const url = `${config.hubApiUrl}/api/v1/skill/leaderboard/${board}`;
-  const resp = await fetch(url, {
+  const url = new URL(`${config.hubApiUrl}/api/v1/skill/leaderboard/${board}`);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(offset));
+
+  const resp = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       Accept: "application/json",
@@ -56,7 +59,7 @@ export async function executeSkillLeaderboard(
   }
 
   const data = (await resp.json()) as LeaderboardResponse;
-  const strategies = data.strategies?.slice(offset, offset + limit) ?? [];
+  const strategies = data.strategies ?? [];
 
   return {
     board: data.board ?? board,
@@ -246,11 +249,11 @@ export async function executeSkillPublish(
   const zipBuffer = await readFile(params.filePath);
   const base64 = zipBuffer.toString("base64");
 
-  const body: Record<string, unknown> = { zipBase64: base64 };
+  const body: Record<string, unknown> = { content: base64 };
   if (params.visibility) body.visibility = params.visibility;
 
   const { status, data } = await hubApiRequest(config, "POST", "/skill/publish", { body });
-  if (status >= 400) {
+  if (status >= 400 || status === 0) {
     return { error: `Publish failed (HTTP ${status})`, details: data };
   }
   return data;

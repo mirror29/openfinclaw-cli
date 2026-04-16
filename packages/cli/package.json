@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Cross-platform financial tools for AI agents — MCP server + CLI",
   "license": "MIT",
   "type": "module",

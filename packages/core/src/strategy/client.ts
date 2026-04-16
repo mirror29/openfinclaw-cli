@@ -25,12 +25,22 @@ export async function hubApiRequest(
     headers["Authorization"] = `Bearer ${config.apiKey}`;
   }
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    body: options?.body ? JSON.stringify(options.body) : undefined,
-    signal: AbortSignal.timeout(config.requestTimeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: options?.body ? JSON.stringify(options.body) : undefined,
+      signal: AbortSignal.timeout(config.requestTimeoutMs),
+    });
+  } catch (err) {
+    // Network error / abort / DNS failure: surface as status 0 with structured error
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      status: 0,
+      data: { error: { message: `Network error: ${msg}` } },
+    };
+  }
 
   const rawText = await response.text();
   let data: unknown = rawText;

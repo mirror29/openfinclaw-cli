@@ -58,7 +58,32 @@ export async function fetchStrategyInfo(
 }
 
 /**
+ * Map common HTTP status codes to actionable Chinese hints.
+ * Prepended to the server-side message so users know what to do next.
+ * @param status - HTTP status code
+ * @returns Short hint, or empty string if no specific guidance is available
+ */
+function hintForStatus(status: number): string {
+  switch (status) {
+    case 401:
+      return "API Key 无效或已过期。请重新运行 `openfinclaw init` 或检查 OPENFINCLAW_API_KEY。";
+    case 403:
+      return "权限不足（当前 API Key 无法 fork 该策略）。";
+    case 404:
+      return "策略不存在或未公开。";
+    case 400:
+    case 422:
+      return "请求参数有误。";
+    case 0:
+      return "网络异常或请求超时。";
+    default:
+      return "";
+  }
+}
+
+/**
  * Fork a strategy from the Hub and download it locally.
+ * Flow: fetchStrategyInfo → POST fork-and-download → download ZIP → extract → write meta.
  * @param config - Core configuration
  * @param rawId - Strategy ID (UUID or Hub URL)
  * @param options - Optional fork name and target directory
@@ -70,10 +95,33 @@ export async function forkStrategy(
 ): Promise<StrategyResult<{ localPath: string; forkMeta: ForkMeta }>> {
   const strategyId = parseStrategyId(rawId);
 
-  // Step 1: Call the fork API
-  const { status, data } = await hubApiRequest(config, "POST", `/skill/entries/${strategyId}/fork-and-download`);
+  // Step 0: Fetch source strategy info (for sourceName / sourceVersion / sourceAuthor)
+  const infoResult = await fetchStrategyInfo(config, strategyId);
+  if (!infoResult.success || !infoResult.data) {
+    return {
+      success: false,
+      error: infoResult.error ?? "Failed to fetch strategy info",
+    };
+  }
+  const info = infoResult.data;
 
-  if (status >= 400) {
+  // Step 1: Call the fork API with the required body
+  const { status, data } = await hubApiRequest(
+    config,
+    "POST",
+    `/skill/entries/${strategyId}/fork-and-download`,
+    {
+      body: {
+        forkConfig: {
+          keepGenes: true,
+          overrideParams: {},
+        },
+        ...(options?.name ? { name: options.name } : {}),
+      },
+    },
+  );
+
+  if (status >= 400 || status === 0) {
     let msg = `HTTP ${status}`;
     if (typeof data === "string" && data.startsWith("{")) {
       try {
@@ -86,9 +134,10 @@ export async function forkStrategy(
     } else if (typeof data === "object" && data !== null) {
       const errObj = data as Record<string, unknown>;
       const inner = errObj.error as Record<string, unknown> | undefined;
-      msg = (inner?.message as string) || (errObj.message as string) || msg;
+      msg = (inner?.message as string) || (errObj.message as string) || (inner?.code as string) || msg;
     }
-    return { success: false, error: `Fork failed: ${msg}` };
+    const hint = hintForStatus(status);
+    return { success: false, error: hint ? `Fork failed: ${msg} (${hint})` : `Fork failed: ${msg}` };
   }
 
   const forkResp = data as ForkAndDownloadResponse;
@@ -97,13 +146,19 @@ export async function forkStrategy(
   }
 
   // Step 2: Download the ZIP
-  const zipResp = await fetch(forkResp.download.url, {
-    signal: AbortSignal.timeout(config.requestTimeoutMs),
-  });
-  if (!zipResp.ok) {
-    return { success: false, error: `Download failed: HTTP ${zipResp.status}` };
+  let zipBuffer: Buffer;
+  try {
+    const zipResp = await fetch(forkResp.download.url, {
+      signal: AbortSignal.timeout(config.requestTimeoutMs),
+    });
+    if (!zipResp.ok) {
+      return { success: false, error: `Download failed: HTTP ${zipResp.status}` };
+    }
+    zipBuffer = Buffer.from(await zipResp.arrayBuffer());
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: `Download failed: ${msg}` };
   }
-  const zipBuffer = Buffer.from(await zipResp.arrayBuffer());
 
   // Step 3: Create local directory
   const dateDir = options?.targetDir
@@ -130,33 +185,40 @@ export async function forkStrategy(
       success: true,
       data: {
         localPath,
-        forkMeta: buildForkMeta(strategyId, forkResp, localPath, dateDir),
+        forkMeta: buildForkMeta(strategyId, info, forkResp, localPath, dateDir),
       },
       error: `adm-zip not available; saved raw ZIP. Install adm-zip for auto-extraction. (${err instanceof Error ? err.message : String(err)})`,
     };
   }
 
   // Step 5: Write fork metadata
-  const meta = buildForkMeta(strategyId, forkResp, localPath, dateDir);
+  const meta = buildForkMeta(strategyId, info, forkResp, localPath, dateDir);
   await writeForkMeta(localPath, meta);
 
   return { success: true, data: { localPath, forkMeta: meta } };
 }
 
 /**
- * Build a ForkMeta object from fork API response data.
+ * Build a ForkMeta object from source strategy info + fork API response.
+ * @param strategyId - Source strategy UUID
+ * @param info - Source strategy public info (from fetchStrategyInfo)
+ * @param forkResp - Fork API response
+ * @param localPath - Local directory where files were extracted
+ * @param dateDir - Date directory path (parent of localPath)
  */
 function buildForkMeta(
   strategyId: string,
+  info: HubStrategyInfo,
   forkResp: ForkAndDownloadResponse,
   localPath: string,
   dateDir: string,
 ): ForkMeta {
   return {
-    sourceId: forkResp.parent.id,
-    sourceShortId: forkResp.parent.id.slice(0, 8),
-    sourceName: forkResp.parent.name,
-    sourceVersion: forkResp.entry.version,
+    sourceId: strategyId,
+    sourceShortId: strategyId.slice(0, 8),
+    sourceName: info.name,
+    sourceVersion: info.version ?? forkResp.entry.version ?? "1.0.0",
+    sourceAuthor: info.author?.displayName,
     forkedAt: forkResp.forkedAt ?? new Date().toISOString(),
     forkDateDir: typeof dateDir === "string" ? dateDir.split("/").pop() ?? formatDate(new Date()) : formatDate(new Date()),
     hubUrl: `https://hub.openfinclaw.ai/strategy/${strategyId}`,
