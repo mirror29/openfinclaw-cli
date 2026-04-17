@@ -17,6 +17,18 @@ import {
   executeSkillValidate,
   executeSkillPublish,
   executeSkillPublishVerify,
+  executeDeepagentHealth,
+  executeDeepagentSkills,
+  executeDeepagentThreads,
+  executeDeepagentMessages,
+  executeDeepagentBacktests,
+  executeDeepagentBacktestResult,
+  executeDeepagentPackages,
+  executeDeepagentPackageMeta,
+  executeDeepagentDownloadPackage,
+  parseDeepAgentSSE,
+  deepagentApiRequest,
+  type DeepAgentThread,
 } from "@openfinclaw/core";
 import {
   color,
@@ -513,23 +525,56 @@ export async function runCli(command: string, args: string[]) {
         break;
       }
 
+      case "deepagent": {
+        await runDeepagentSubcommand(positional, flags, outputJson, config);
+        break;
+      }
+
       case "doctor": {
         console.log(header("OpenFinClaw Doctor"));
         const apiMark = config.apiKey
           ? color.green(sym.check) + " " + color.gray(`${config.apiKey.slice(0, 8)}…`)
           : color.red(sym.cross) + " " + color.red("未配置");
-        console.log(kv("API Key", apiMark));
+        console.log(kv("Hub Key", apiMark));
+        const dpMark = config.deepagentApiKey
+          ? color.green(sym.check) + " " + color.gray(`${config.deepagentApiKey.slice(0, 8)}…`)
+          : color.gray(sym.dot + " 未配置（deepagent 鉴权类工具将不可用）");
+        console.log(kv("DeepAgent Key", dpMark));
         console.log(kv("Config", color.gray(getUserConfigFilePath())));
         console.log(kv("Hub URL", color.cyan(config.hubApiUrl)));
         console.log(kv("DataHub", color.cyan(config.datahubGatewayUrl)));
+        if (config.deepagentApiUrl)
+          console.log(kv("DeepAgent URL", color.cyan(config.deepagentApiUrl)));
         console.log(kv("Timeout", `${config.requestTimeoutMs}ms`));
+        console.log();
+        console.log(color.gray("  连通性"));
         try {
           await executeFinPrice({ symbol: "BTC/USDT" }, config);
-          console.log(kv("连通性", color.green(sym.check + " OK (BTC/USDT)")));
+          console.log(kv("DataHub", color.green(sym.check + " OK (BTC/USDT)")));
         } catch (err) {
           console.log(
             kv(
-              "连通性",
+              "DataHub",
+              color.red(
+                `${sym.cross} FAIL · ${err instanceof Error ? err.message : String(err)}`,
+              ),
+            ),
+          );
+        }
+        try {
+          const h = await executeDeepagentHealth({}, config);
+          if (h.success) {
+            const parts: string[] = [`OK`];
+            if (h.sdk) parts.push(`sdk=${h.sdk}`);
+            if (h.skills_count != null) parts.push(`${h.skills_count} skills`);
+            console.log(kv("DeepAgent", color.green(sym.check + " " + parts.join(", "))));
+          } else {
+            console.log(kv("DeepAgent", color.red(sym.cross + " " + (h.error ?? "fail"))));
+          }
+        } catch (err) {
+          console.log(
+            kv(
+              "DeepAgent",
               color.red(
                 `${sym.cross} FAIL · ${err instanceof Error ? err.message : String(err)}`,
               ),
@@ -552,4 +597,396 @@ export async function runCli(command: string, args: string[]) {
     console.error(errorLine(err instanceof Error ? err.message : String(err)));
     process.exit(1);
   }
+}
+
+/**
+ * Handle `openfinclaw deepagent <subcommand> ...`.
+ * CLI `research` uses direct SSE streaming (real token-by-token in the terminal),
+ * while the MCP server uses submit/poll/finalize for cross-platform agent support.
+ * @param positional - Positional args after `deepagent`
+ * @param flags - Parsed flags
+ * @param outputJson - `--output json` flag
+ * @param config - Resolved OpenFinClaw config
+ */
+async function runDeepagentSubcommand(
+  positional: string[],
+  flags: Record<string, string>,
+  outputJson: boolean,
+  config: Parameters<typeof executeDeepagentHealth>[1],
+): Promise<void> {
+  const sub = positional[0];
+  if (!sub) {
+    console.error(
+      errorLine("用法: openfinclaw deepagent <health|skills|research|status|threads|messages|backtests|backtest|packages|package-meta|download>"),
+    );
+    process.exit(1);
+  }
+
+  switch (sub) {
+    case "health": {
+      const result = await executeDeepagentHealth({}, config);
+      if (outputJson) {
+        printJson(result);
+      } else if (!result.success) {
+        console.log(errorLine(result.error ?? "health check failed"));
+      } else {
+        console.log(header("DeepAgent Health"));
+        console.log(kv("Status", color.green(result.status ?? "—")));
+        if (result.sdk) console.log(kv("SDK", result.sdk));
+        if (result.skills_count != null) console.log(kv("Skills", String(result.skills_count)));
+        if (result.agents) console.log(kv("Agents", color.cyan(result.agents.join(", "))));
+        if (result.active_sessions != null)
+          console.log(kv("Active sessions", String(result.active_sessions)));
+        if (result.threads_supported != null)
+          console.log(kv("Threads", result.threads_supported ? color.green("supported") : color.gray("no")));
+        console.log();
+      }
+      break;
+    }
+
+    case "skills": {
+      const limit = flags.limit ? Number(flags.limit) : 20;
+      const result = await executeDeepagentSkills({}, config);
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!("count" in result)) {
+        console.log(errorLine((result as { error?: string }).error ?? "skills failed"));
+        break;
+      }
+      console.log(header(`DeepAgent Skills  ${color.gray(`· ${result.count} 个`)}`));
+      for (const s of result.skills.slice(0, limit)) {
+        console.log(
+          "  " +
+            color.cyan(padRight(s.name, 28)) +
+            color.bold(padRight(s.display_name ?? "", 26)) +
+            color.gray(truncate(s.description ?? "", 60)),
+        );
+      }
+      if (result.count > limit)
+        console.log(color.gray(`  … ${result.count - limit} 条已省略（加 --limit=N 查看更多）`));
+      console.log();
+      break;
+    }
+
+    case "research": {
+      const query = positional.slice(1).join(" ").trim();
+      if (!query) {
+        console.error(errorLine("用法: openfinclaw deepagent research \"<query>\" [--thread-id <id>]"));
+        process.exit(1);
+      }
+      if (!config.deepagentApiKey) {
+        console.error(
+          errorLine(
+            "DeepAgent API key 未配置。运行 `openfinclaw init` 或设置 OPENFINCLAW_DEEPAGENT_API_KEY",
+          ),
+        );
+        process.exit(1);
+      }
+      await streamResearch(query, flags["thread-id"], config);
+      break;
+    }
+
+    case "threads": {
+      const action = (positional[1] as "list" | "create" | "get" | "delete") ?? "list";
+      const threadId = positional[2] ?? flags["thread-id"];
+      const title = flags.title;
+      const result = await executeDeepagentThreads({ action, threadId, title }, config);
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!result.success) {
+        console.log(errorLine(result.error ?? "threads failed"));
+        break;
+      }
+      if (action === "list" && "threads" in result) {
+        console.log(header(`DeepAgent Threads  ${color.gray(`· ${result.count} 个`)}`));
+        for (const t of result.threads as DeepAgentThread[]) {
+          console.log(
+            "  " +
+              color.gray(padRight((t.id ?? "").slice(0, 8), 10)) +
+              color.bold(padRight(truncate(t.title || "(untitled)", 38), 40)) +
+              color.gray(t.updated_at ?? ""),
+          );
+        }
+        console.log();
+      } else if (action === "create" && "thread" in result && result.thread) {
+        const t = result.thread;
+        console.log(success(`创建成功`));
+        console.log(kv("ID", color.cyan(t.id)));
+        if (t.title) console.log(kv("Title", t.title));
+        console.log();
+      } else if (action === "get" && "thread" in result && result.thread) {
+        console.log(header("Thread"));
+        const t = result.thread;
+        console.log(kv("ID", color.cyan(t.id)));
+        console.log(kv("Title", t.title ?? "—"));
+        console.log(kv("Status", t.status ?? "—"));
+        console.log(kv("Turns", String(t.total_turns ?? 0)));
+        console.log(kv("Cost (USD)", String(t.total_cost_usd ?? 0)));
+        console.log();
+      } else if (action === "delete") {
+        console.log(success(`已删除: ${threadId}`));
+      }
+      break;
+    }
+
+    case "messages": {
+      const threadId = positional[1] ?? flags["thread-id"];
+      if (!threadId) {
+        console.error(errorLine("用法: openfinclaw deepagent messages <threadId> [--limit N]"));
+        process.exit(1);
+      }
+      const limit = flags.limit ? Number(flags.limit) : 5;
+      const result = await executeDeepagentMessages({ threadId, limit }, config);
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!result.success) {
+        console.log(errorLine(result.error ?? "messages failed"));
+        break;
+      }
+      console.log(header(`Thread Messages  ${color.gray(`· ${result.count} 条`)}`));
+      for (const m of result.messages) {
+        const roleColor =
+          m.role === "assistant" ? color.green : m.role === "user" ? color.cyan : color.gray;
+        console.log("  " + roleColor(`[${m.role}]`) + " " + color.gray(m.created_at ?? ""));
+        const txt = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+        console.log("  " + truncate(txt, 200));
+        console.log();
+      }
+      break;
+    }
+
+    case "backtests": {
+      const result = await executeDeepagentBacktests({}, config);
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!("count" in result)) {
+        printJson(result);
+        break;
+      }
+      console.log(header(`Backtests  ${color.gray(`· ${result.count} 个`)}`));
+      console.log(
+        "  " +
+          color.gray(
+            padRight("Task ID", 12) +
+              padRight("Status", 12) +
+              padLeft("Return", 12) +
+              padLeft("Sharpe", 10) +
+              padLeft("MaxDD", 10) +
+              padLeft("WinRate", 10),
+          ),
+      );
+      for (const r of result.results.slice(0, 20)) {
+        const ret = r.total_return != null ? r.total_return * 100 : null;
+        const dd = r.max_drawdown != null ? r.max_drawdown * 100 : null;
+        const wr = r.win_rate != null ? r.win_rate * 100 : null;
+        console.log(
+          "  " +
+            color.gray(padRight(r.task_id.slice(0, 10), 12)) +
+            padRight(r.status ?? "—", 12) +
+            padLeft(formatPercent(ret), 12) +
+            padLeft(r.sharpe != null ? color.bold(r.sharpe.toFixed(2)) : color.gray("—"), 10) +
+            padLeft(formatPercent(dd), 10) +
+            padLeft(formatPercent(wr, 1), 10),
+        );
+      }
+      console.log();
+      break;
+    }
+
+    case "backtest": {
+      const taskId = positional[1];
+      if (!taskId) {
+        console.error(errorLine("用法: openfinclaw deepagent backtest <taskId>"));
+        process.exit(1);
+      }
+      const result = await executeDeepagentBacktestResult({ taskId }, config);
+      printJson(result);
+      break;
+    }
+
+    case "packages": {
+      const result = await executeDeepagentPackages({}, config);
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!("count" in result)) {
+        printJson(result);
+        break;
+      }
+      console.log(header(`策略包  ${color.gray(`· ${result.count} 个`)}`));
+      for (const p of result.packages.slice(0, 20)) {
+        console.log(
+          "  " +
+            color.cyan(padRight(p.package_id, 22)) +
+            color.bold(padRight(truncate(p.name ?? "—", 30), 32)) +
+            color.gray(padRight(p.symbol ?? "—", 12)) +
+            color.gray(padRight(p.style ?? "—", 18)) +
+            color.gray(p.has_zip ? `${p.zip_size_kb ?? "?"} KB` : "无 zip"),
+        );
+      }
+      console.log();
+      console.log(
+        hint(`openfinclaw deepagent download <package_id>   下载策略 ZIP`),
+      );
+      console.log();
+      break;
+    }
+
+    case "package-meta": {
+      const packageId = positional[1];
+      if (!packageId) {
+        console.error(errorLine("用法: openfinclaw deepagent package-meta <packageId>"));
+        process.exit(1);
+      }
+      const result = await executeDeepagentPackageMeta({ packageId }, config);
+      printJson(result);
+      break;
+    }
+
+    case "download": {
+      const packageId = positional[1];
+      if (!packageId) {
+        console.error(errorLine("用法: openfinclaw deepagent download <packageId> [--target-dir <path>]"));
+        process.exit(1);
+      }
+      const result = await executeDeepagentDownloadPackage(
+        { packageId, targetDir: flags["target-dir"] },
+        config,
+      );
+      if (outputJson) {
+        printJson(result);
+        break;
+      }
+      if (!result.success) {
+        console.log(errorLine(result.error ?? "download failed"));
+      } else {
+        console.log();
+        console.log(success("下载完成"));
+        console.log(kv("Package", color.cyan(result.packageId)));
+        console.log(kv("Path", color.cyan(result.localPath)));
+        console.log(kv("Size", `${result.sizeKb} KB`));
+        console.log();
+      }
+      break;
+    }
+
+    case "status": {
+      // CLI 场景下 status/submit/poll/finalize 几乎无意义（短进程），
+      // 但暴露 status 以便调试。
+      const result = (await import("@openfinclaw/core")).executeDeepagentStatus(
+        { taskId: positional[1] },
+        config,
+      );
+      printJson(await result);
+      break;
+    }
+
+    default:
+      console.error(
+        errorLine(`未知的 deepagent 子命令: ${sub}`) +
+          "\n" +
+          hint("可用: health / skills / research / threads / messages / backtests / backtest / packages / package-meta / download / status"),
+      );
+      process.exit(1);
+  }
+}
+
+/**
+ * CLI-only: stream a DeepAgent research run to stdout token-by-token.
+ * This is a real terminal streaming experience (not available via MCP due to
+ * protocol constraints). Blocks until `RUN_FINISHED` or stream end.
+ * @param query - Research query
+ * @param existingThreadId - Optional thread UUID to continue
+ * @param config - Resolved config
+ */
+async function streamResearch(
+  query: string,
+  existingThreadId: string | undefined,
+  config: Parameters<typeof executeDeepagentHealth>[1],
+): Promise<void> {
+  // Resolve thread.
+  let threadId = existingThreadId;
+  if (!threadId) {
+    const { status, data } = await deepagentApiRequest(config, "POST", "/threads", { body: {} });
+    if (status !== 200 && status !== 201) {
+      console.error(errorLine(`创建 thread 失败: HTTP ${status}`));
+      process.exit(1);
+    }
+    threadId = (data as { id?: string }).id;
+    if (!threadId) {
+      console.error(errorLine("创建 thread 失败: 响应缺少 id"));
+      process.exit(1);
+    }
+  }
+
+  const baseUrl = (config.deepagentApiUrl ?? "https://api.openfinclaw.ai/agent").replace(
+    /\/+$/,
+    "",
+  );
+  const url = `${baseUrl}/api/threads/${threadId}/runs`;
+
+  console.log(header(`DeepAgent Research`));
+  console.log(kv("Thread", color.gray(threadId)));
+  console.log(kv("Query", color.bold(query)));
+  console.log();
+  console.log(color.gray("───────── 开始生成 ─────────"));
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "X-API-Key": config.deepagentApiKey ?? "",
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
+    body: JSON.stringify({ message: query }),
+    signal: AbortSignal.timeout(config.deepagentSseTimeoutMs ?? 900_000),
+  });
+
+  if (!resp.ok || !resp.body) {
+    const txt = resp.body ? await resp.text() : "";
+    console.error(errorLine(`Run 失败: HTTP ${resp.status} ${txt.slice(0, 200)}`));
+    process.exit(1);
+  }
+
+  let runId: string | undefined;
+  let isError = false;
+  for await (const event of parseDeepAgentSSE(resp.body)) {
+    switch (event.type) {
+      case "RUN_STARTED":
+        runId = event.data.runId;
+        break;
+      case "TEXT_DELTA":
+        process.stdout.write(event.data.delta);
+        break;
+      case "TOOL_START":
+        process.stdout.write(color.gray(`\n\n${sym.bullet} [tool: ${event.data.toolName}]\n`));
+        break;
+      case "TOOL_DONE":
+        process.stdout.write(color.gray(` ${color.green(sym.check)}\n`));
+        break;
+      case "AGENT_HANDOFF":
+        process.stdout.write(color.gray(`\n\n${sym.arrow} [handoff → ${event.data.agentName}]\n`));
+        break;
+      case "ERROR":
+        isError = true;
+        process.stdout.write("\n" + errorLine(event.data.error) + "\n");
+        break;
+      case "RUN_FINISHED":
+        if (event.data.isError) isError = true;
+        break;
+    }
+  }
+  process.stdout.write("\n");
+  console.log(color.gray("───────── 结束 ─────────"));
+  if (runId) console.log(hint(`runId: ${color.gray(runId)}`));
+  if (isError) process.exit(1);
 }

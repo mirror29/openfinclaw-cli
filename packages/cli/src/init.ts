@@ -318,13 +318,21 @@ function selectDetectedPlatforms(states: Map<string, PlatformDetectInfo>): Set<s
   return detected;
 }
 
-function buildMcpEntry(toolGroups: string[], apiKey: string) {
+/**
+ * Build the MCP entry stanza (command + args + env).
+ * @param toolGroups - Selected tool groups (datahub / strategy / deepagent)
+ * @param apiKey - Hub API key (fch_...)
+ * @param deepagentApiKey - Optional DeepAgent API key (raw, no prefix)
+ */
+function buildMcpEntry(toolGroups: string[], apiKey: string, deepagentApiKey?: string) {
   const args = ["@openfinclaw/cli", "serve"];
-  /** When both groups are selected, omit --tools (same as serve default). */
-  if (toolGroups.length > 0 && toolGroups.length < 2) {
+  /** When all 3 groups are selected, omit --tools (same as serve default). */
+  if (toolGroups.length > 0 && toolGroups.length < 3) {
     args.push(`--tools=${toolGroups.join(",")}`);
   }
-  return { command: "npx", args, env: { OPENFINCLAW_API_KEY: apiKey } };
+  const env: Record<string, string> = { OPENFINCLAW_API_KEY: apiKey };
+  if (deepagentApiKey) env.OPENFINCLAW_DEEPAGENT_API_KEY = deepagentApiKey;
+  return { command: "npx", args, env };
 }
 
 function writeJsonConfig(platform: PlatformDef, entry: object) {
@@ -360,9 +368,12 @@ function writeYamlConfig(
     content = readFileSync(fullPath, "utf-8");
   }
 
-  const insertBlock = `  openfinclaw:\n    command: "${entry.command}"\n    args: ${JSON.stringify(entry.args)}\n    env:\n      OPENFINCLAW_API_KEY: "${entry.env.OPENFINCLAW_API_KEY}"\n`;
+  const envLines = Object.entries(entry.env)
+    .map(([k, v]) => `      ${k}: "${v}"`)
+    .join("\n");
+  const insertBlock = `  openfinclaw:\n    command: "${entry.command}"\n    args: ${JSON.stringify(entry.args)}\n    env:\n${envLines}\n`;
 
-  content = content.replace(/\n  openfinclaw:\n(?:    [^\n]*\n)*/g, "");
+  content = content.replace(/\n  openfinclaw:\n(?:    [^\n]*\n|      [^\n]*\n)*/g, "");
 
   if (content.includes("mcp_servers:")) {
     content = content.replace("mcp_servers:", "mcp_servers:\n" + insertBlock);
@@ -375,12 +386,13 @@ function writeYamlConfig(
 }
 
 /**
- * Persist API key to `~/.openfinclaw/config.json` so terminal `openfinclaw` works without `export`.
- * Unix: chmod 600 on the file.
- * @param apiKey - Hub API key
+ * Persist API key(s) to `~/.openfinclaw/config.json` so terminal `openfinclaw`
+ * works without `export`. Unix: chmod 600 on the file.
+ * @param apiKey - Hub API key (fch_...)
+ * @param deepagentApiKey - Optional DeepAgent API key
  * @returns Written file path
  */
-function writeUserConfigFile(apiKey: string): string {
+function writeUserConfigFile(apiKey: string, deepagentApiKey?: string): string {
   const fullPath = getUserConfigFilePath();
   mkdirSync(dirname(fullPath), { recursive: true });
 
@@ -393,6 +405,9 @@ function writeUserConfigFile(apiKey: string): string {
     }
   }
   existing.apiKey = apiKey;
+  if (deepagentApiKey) {
+    existing.deepagentApiKey = deepagentApiKey;
+  }
 
   writeFileSync(fullPath, JSON.stringify(existing, null, 2) + "\n", "utf-8");
   if (process.platform !== "win32") {
@@ -460,8 +475,9 @@ export async function runInit() {
     options: [
       { value: "datahub", label: "datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
       { value: "strategy", label: "strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
+      { value: "deepagent", label: "deepagent", hint: "远程 AI Agent — 研究/回测/策略生成（需独立 Key）(~1,400 tokens)" },
     ],
-    initialValues: ["datahub", "strategy"],
+    initialValues: ["datahub", "strategy", "deepagent"],
   });
   if (clack.isCancel(toolGroups)) {
     clack.cancel(dim("已取消"));
@@ -498,10 +514,35 @@ export async function runInit() {
     }
   }
 
+  // ── Step 3.5: DeepAgent API Key（可选） ──
+  let deepagentApiKey: string | undefined;
+  if ((toolGroups as string[]).includes("deepagent")) {
+    clack.log.step(`${cyan("Step 3.5")} DeepAgent API Key ${dim("（可选 · 启用 AI 研究与策略生成）")}`);
+    clack.log.info(`${dim("DeepAgent 独立于 Hub，使用不同的 API Key。")}`);
+    const dpInput = await clack.password({
+      message: `${dim("粘贴 DeepAgent API Key（回车跳过）")}`,
+    });
+    if (clack.isCancel(dpInput)) {
+      clack.cancel(dim("已取消"));
+      process.exit(0);
+    }
+    const dp = (dpInput as string).trim();
+    if (dp.length > 0) {
+      deepagentApiKey = dp;
+      clack.log.success(`${green("✔")} DeepAgent Key 已接受`);
+    } else {
+      clack.log.info(
+        dim(
+          "已跳过 — 仅 fin_deepagent_health / fin_deepagent_skills 可用；其他 deepagent 工具会提示配置 Key。",
+        ),
+      );
+    }
+  }
+
   // ── Step 4: Write configs ──
   clack.log.step(`${cyan("Step 4")} 写入配置文件`);
 
-  const entry = buildMcpEntry(toolGroups as string[], apiKey as string);
+  const entry = buildMcpEntry(toolGroups as string[], apiKey as string, deepagentApiKey);
   let successCount = 0;
 
   for (const pv of platforms as string[]) {
@@ -522,7 +563,7 @@ export async function runInit() {
   }
 
   try {
-    const userConfigPath = writeUserConfigFile(apiKey as string);
+    const userConfigPath = writeUserConfigFile(apiKey as string, deepagentApiKey);
     clack.log.success(
       `${green("✔")} ${bold("CLI 配置已保存")}  ${dim("→")}  ${cyan(userConfigPath)} ${dim("（终端可直接运行 openfinclaw，无需 export）")}`,
     );

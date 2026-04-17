@@ -20,13 +20,27 @@ import {
   executeSkillValidate,
   executeSkillPublish,
   executeSkillPublishVerify,
+  executeDeepagentHealth,
+  executeDeepagentSkills,
+  executeDeepagentThreads,
+  executeDeepagentMessages,
+  executeDeepagentResearchSubmit,
+  executeDeepagentResearchPoll,
+  executeDeepagentResearchFinalize,
+  executeDeepagentStatus,
+  executeDeepagentCancel,
+  executeDeepagentBacktests,
+  executeDeepagentBacktestResult,
+  executeDeepagentPackages,
+  executeDeepagentPackageMeta,
+  executeDeepagentDownloadPackage,
   OPENFINCLAW_AGENT_GUIDANCE,
   type OpenFinClawConfig,
 } from "@openfinclaw/core";
 
-/** Parse --tools=datahub,strategy from argv */
+/** Parse --tools=datahub,strategy,deepagent from argv */
 function parseToolGroups(argv: string[]): string[] {
-  const ALL_GROUPS = ["datahub", "strategy"];
+  const ALL_GROUPS = ["datahub", "strategy", "deepagent"];
   for (const arg of argv) {
     if (arg.startsWith("--tools=")) {
       const groups = arg
@@ -217,6 +231,178 @@ export async function startMcpServer() {
         },
       },
       wrapHandler(config, executeSkillPublishVerify),
+    );
+  }
+
+  // ── DeepAgent tools ──
+  // health + skills are public (no auth); others require `deepagentApiKey`.
+  // When the key is absent the handlers return a structured friendly error
+  // rather than refusing to register — this preserves the tool list for clients
+  // that inspect it before prompting the user to configure the key.
+  if (groups.includes("deepagent")) {
+    server.registerTool(
+      "fin_deepagent_health",
+      {
+        description: "Check DeepAgent service health (public, no API key required)",
+        inputSchema: {},
+      },
+      wrapHandler(config, executeDeepagentHealth),
+    );
+
+    server.registerTool(
+      "fin_deepagent_skills",
+      {
+        description: "List DeepAgent analysis skills (~60 entries; public, no API key required)",
+        inputSchema: {},
+      },
+      wrapHandler(config, executeDeepagentSkills),
+    );
+
+    server.registerTool(
+      "fin_deepagent_threads",
+      {
+        description: "Manage DeepAgent threads — list, create, get, or delete",
+        inputSchema: {
+          action: z.enum(["list", "create", "get", "delete"]).describe("Operation"),
+          threadId: z.string().optional().describe("Thread UUID (required for get/delete)"),
+          title: z.string().optional().describe("Title for new thread (create only)"),
+        },
+      },
+      wrapHandler(config, executeDeepagentThreads),
+    );
+
+    server.registerTool(
+      "fin_deepagent_messages",
+      {
+        description: "Read messages in a DeepAgent thread",
+        inputSchema: {
+          threadId: z.string().describe("Thread UUID"),
+          limit: z.number().optional().describe("Max messages (1-20, default 5)"),
+        },
+      },
+      wrapHandler(config, executeDeepagentMessages),
+    );
+
+    server.registerTool(
+      "fin_deepagent_research_submit",
+      {
+        description:
+          "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId " +
+          "IMMEDIATELY. After calling: (1) tell the user the estimated wait time, " +
+          "(2) call fin_deepagent_research_poll every 30-60 seconds (never faster), " +
+          "(3) when poll returns done=true, call fin_deepagent_research_finalize to get the full report.",
+        inputSchema: {
+          query: z.string().describe("Research question or analysis request"),
+          threadId: z
+            .string()
+            .optional()
+            .describe("Optional existing thread UUID to continue a conversation"),
+        },
+      },
+      wrapHandler(config, executeDeepagentResearchSubmit),
+    );
+
+    server.registerTool(
+      "fin_deepagent_research_poll",
+      {
+        description:
+          "Poll an in-progress research run. Returns current status + partial accumulated text " +
+          "(last ~1500 chars). Call every 30-60s until done=true.",
+        inputSchema: {
+          taskId: z.string().describe("Task ID from fin_deepagent_research_submit"),
+        },
+      },
+      wrapHandler(config, executeDeepagentResearchPoll),
+    );
+
+    server.registerTool(
+      "fin_deepagent_research_finalize",
+      {
+        description:
+          "Retrieve the full final text of a completed research run and clear local state. " +
+          "Only call after poll returned done=true.",
+        inputSchema: {
+          taskId: z.string().describe("Task ID from fin_deepagent_research_submit"),
+        },
+      },
+      wrapHandler(config, executeDeepagentResearchFinalize),
+    );
+
+    server.registerTool(
+      "fin_deepagent_status",
+      {
+        description:
+          "List all active DeepAgent tasks in this MCP server, or get status of one task",
+        inputSchema: {
+          taskId: z.string().optional().describe("Optional taskId; omit to list all"),
+        },
+      },
+      wrapHandler(config, executeDeepagentStatus),
+    );
+
+    server.registerTool(
+      "fin_deepagent_cancel",
+      {
+        description: "Cancel a running DeepAgent run",
+        inputSchema: {
+          threadId: z.string().describe("Thread UUID"),
+          runId: z.string().describe("Run UUID (== taskId)"),
+        },
+      },
+      wrapHandler(config, executeDeepagentCancel),
+    );
+
+    server.registerTool(
+      "fin_deepagent_backtests",
+      {
+        description: "List DeepAgent-generated backtest summaries (returns, sharpe, drawdown, etc.)",
+        inputSchema: {},
+      },
+      wrapHandler(config, executeDeepagentBacktests),
+    );
+
+    server.registerTool(
+      "fin_deepagent_backtest_result",
+      {
+        description: "Get the full backtest report for a given task (metrics / trades / equity curve)",
+        inputSchema: {
+          taskId: z.string().describe("Backtest task UUID"),
+        },
+      },
+      wrapHandler(config, executeDeepagentBacktestResult),
+    );
+
+    server.registerTool(
+      "fin_deepagent_packages",
+      {
+        description: "List strategy packages generated by DeepAgent",
+        inputSchema: {},
+      },
+      wrapHandler(config, executeDeepagentPackages),
+    );
+
+    server.registerTool(
+      "fin_deepagent_package_meta",
+      {
+        description: "Get strategy package metadata (parameters / template / validation)",
+        inputSchema: {
+          packageId: z.string().describe("Package ID (pkg_xxxxx)"),
+        },
+      },
+      wrapHandler(config, executeDeepagentPackageMeta),
+    );
+
+    server.registerTool(
+      "fin_deepagent_download_package",
+      {
+        description:
+          "Download a strategy package ZIP to local disk (default: ~/.openfinclaw/deepagent-packages/)",
+        inputSchema: {
+          packageId: z.string().describe("Package ID (pkg_xxxxx)"),
+          targetDir: z.string().optional().describe("Custom target directory"),
+        },
+      },
+      wrapHandler(config, executeDeepagentDownloadPackage),
     );
   }
 
