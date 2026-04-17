@@ -135,18 +135,41 @@ const PLATFORMS: PlatformDef[] = [
   { value: "lm-studio", label: "LM Studio", hint: "本地模型推理", configPath: "~/.lmstudio/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── IDEs ──
-  { value: "claude-code", label: "Claude Code", hint: "~/.claude/settings.json", configPath: "~/.claude/settings.json", format: "json", mcpKey: "mcpServers" },
+  {
+    value: "claude-code",
+    label: "Claude Code",
+    hint: "~/.claude.json",
+    configPath: "~/.claude.json",
+    format: "json",
+    mcpKey: "mcpServers",
+    installPaths: ["~/.claude"],
+    installCliCommands: ["claude"],
+  },
   { value: "vscode", label: "VS Code (Copilot)", hint: ".vscode/mcp.json", configPath: ".vscode/mcp.json", format: "json", mcpKey: "servers" },
   { value: "cursor", label: "Cursor", hint: ".cursor/mcp.json", configPath: ".cursor/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "trae", label: "Trae (ByteDance)", hint: ".trae/mcp.json", configPath: ".trae/mcp.json", format: "json", mcpKey: "mcpServers" },
   { value: "windsurf", label: "Windsurf", hint: "Codeium AI IDE", configPath: "~/.codeium/windsurf/mcp_config.json", format: "json", mcpKey: "mcpServers" },
   { value: "zed", label: "Zed", hint: "高性能代码编辑器", configPath: ".zed/settings.json", format: "json", mcpKey: "context_servers" },
   { value: "junie", label: "JetBrains Junie", hint: "JetBrains AI Agent", configPath: "~/.junie/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "cline", label: "Cline", hint: "VS Code 自主编码 Agent", configPath: "~/.cline/mcp_settings.json", format: "json", mcpKey: "mcpServers" },
-  { value: "continue", label: "Continue.dev", hint: "开源 AI 代码助手", configPath: "~/.continue/config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "roo-code", label: "Roo Code", hint: "VS Code AI 编码", configPath: "~/.roo/mcp.json", format: "json", mcpKey: "mcpServers" },
+  {
+    value: "cline",
+    label: "Cline",
+    hint: "VS Code 自主编码 Agent",
+    // Cline (VS Code ext) 把 MCP settings 放在 VS Code globalStorage 下；此路径为 macOS 位置
+    configPath: "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+    format: "json",
+    mcpKey: "mcpServers",
+  },
+  {
+    value: "roo-code",
+    label: "Roo Code",
+    hint: ".roo/mcp.json (项目级)",
+    configPath: ".roo/mcp.json",
+    format: "json",
+    mcpKey: "mcpServers",
+  },
 
   // ── CLI Agents ──
-  { value: "codex", label: "Codex (OpenAI)", hint: "OpenAI 命令行 Agent", configPath: "~/.codex/config.json", format: "json", mcpKey: "mcpServers" },
   { value: "opencode", label: "OpenCode", hint: "开源终端 AI", configPath: "~/.config/opencode/opencode.json", format: "json", mcpKey: "mcp", entryShape: "opencode", installPaths: ["~/.config/opencode", "~/opencode.json"] },
   { value: "amazon-q", label: "Amazon Q CLI", hint: "AWS 命令行助手", configPath: "~/.amazonq/mcp.json", format: "json", mcpKey: "mcpServers" },
 
@@ -241,6 +264,15 @@ function extraInstallCandidatePaths(platformValue: string): string[] {
       if (plat === "linux") out.push(join(uh, ".config", "zed"));
       if (plat === "win32" && la) {
         out.push(join(la, "Programs", "Zed", "Zed.exe"));
+      }
+      break;
+    }
+    case "trae": {
+      out.push(join(uh, ".trae"));
+      if (plat === "darwin") out.push("/Applications/Trae.app");
+      if (plat === "linux") out.push(join(uh, ".config", "Trae"));
+      if (plat === "win32" && la) {
+        out.push(join(la, "Programs", "Trae", "Trae.exe"));
       }
       break;
     }
