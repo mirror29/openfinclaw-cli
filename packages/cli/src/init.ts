@@ -113,6 +113,12 @@ interface PlatformDef {
   format: "json" | "yaml";
   mcpKey: string;
   /**
+   * MCP server entry schema.
+   * - "standard": `{ command, args, env }` — default for most platforms.
+   * - "opencode": `{ type: "local", command: [cmd, ...args], environment, enabled }` — per opencode.ai/config.json.
+   */
+  entryShape?: "standard" | "opencode";
+  /**
    * Extra install markers: only `~` or absolute paths (never cwd-relative).
    * Merged with {@link extraInstallCandidatePaths} for known IDEs.
    */
