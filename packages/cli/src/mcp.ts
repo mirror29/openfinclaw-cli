@@ -287,10 +287,14 @@ export async function startMcpServer() {
       "fin_deepagent_research_submit",
       {
         description:
-          "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId " +
-          "IMMEDIATELY. After calling: (1) tell the user the estimated wait time, " +
-          "(2) call fin_deepagent_research_poll every 30-60 seconds (never faster), " +
-          "(3) when poll returns done=true, call fin_deepagent_research_finalize to get the full report.",
+          "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId IMMEDIATELY.\n\n" +
+          "REQUIRED BEHAVIOR AFTER CALLING:\n" +
+          "1. Tell the user in one sentence: 'Task submitted (taskId=...), takes ~5 min. Ask me to check progress anytime.'\n" +
+          "2. STOP your turn. Return control to the user. DO NOT try to wait.\n" +
+          "3. DO NOT call `sleep`, `Bash sleep 60`, `Monitor`, or any waiting mechanism — Claude Code's sandbox blocks these.\n" +
+          "4. When the user asks 'is it done?' / 'check progress' / 'what's the status' (or any similar intent), call fin_deepagent_research_poll once and report.\n" +
+          "5. When poll returns done=true, call fin_deepagent_research_finalize once to fetch the full report and show it to the user.\n\n" +
+          "Never poll on your own turn. Never loop. One user message → one poll call maximum.",
         inputSchema: {
           query: z.string().describe("Research question or analysis request"),
           threadId: z
@@ -306,8 +310,12 @@ export async function startMcpServer() {
       "fin_deepagent_research_poll",
       {
         description:
-          "Poll an in-progress research run. Returns current status + partial accumulated text " +
-          "(last ~1500 chars). Call every 30-60s until done=true.",
+          "Poll an in-progress research run ONCE — returns current status + last ~1500 chars of accumulated text.\n\n" +
+          "BEHAVIOR RULES:\n" +
+          "- Call this ONCE per user message, then STOP your turn and report the status to the user in one sentence.\n" +
+          "- DO NOT loop, DO NOT chain multiple polls, DO NOT use sleep/wait mechanisms between polls.\n" +
+          "- If done=false: tell user 'still running, ask me again in a minute', return control.\n" +
+          "- If done=true: call fin_deepagent_research_finalize immediately on the SAME turn to fetch the full report.",
         inputSchema: {
           taskId: z.string().describe("Task ID from fin_deepagent_research_submit"),
         },

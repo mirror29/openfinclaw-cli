@@ -299,8 +299,10 @@ export async function executeDeepagentResearchSubmit(
       threadId,
       status: "running",
       hint:
-        "Call fin_deepagent_research_poll every 30-60 seconds with this taskId. " +
-        "When poll returns done=true, call fin_deepagent_research_finalize to get the full report.",
+        "DO NOT sleep or wait on your own turn. Tell the user the task is submitted (~3-10 min), " +
+        "then STOP and return control. When the user next asks for progress, call " +
+        "fin_deepagent_research_poll ONCE with this taskId and report status. " +
+        "If done=true, then call fin_deepagent_research_finalize on the same turn.",
     };
   } catch (err) {
     return {
