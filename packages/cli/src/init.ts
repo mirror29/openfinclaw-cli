@@ -147,7 +147,7 @@ const PLATFORMS: PlatformDef[] = [
 
   // ── CLI Agents ──
   { value: "codex", label: "Codex (OpenAI)", hint: "OpenAI 命令行 Agent", configPath: "~/.codex/config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "opencode", label: "OpenCode", hint: "开源终端 AI", configPath: "~/.opencode/config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "opencode", label: "OpenCode", hint: "开源终端 AI", configPath: "~/.config/opencode/opencode.json", format: "json", mcpKey: "mcp", entryShape: "opencode", installPaths: ["~/.config/opencode", "~/opencode.json"] },
   { value: "amazon-q", label: "Amazon Q CLI", hint: "AWS 命令行助手", configPath: "~/.amazonq/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── Frameworks ──
@@ -341,7 +341,32 @@ function buildMcpEntry(toolGroups: string[], apiKey: string, deepagentApiKey?: s
   return { command: "npx", args, env };
 }
 
-function writeJsonConfig(platform: PlatformDef, entry: object) {
+/**
+ * Convert the standard `{ command, args, env }` stanza to a platform-specific shape.
+ * OpenCode expects `{ type: "local", command: [cmd, ...args], environment, enabled }`
+ * (see https://opencode.ai/docs/mcp-servers); other platforms accept the standard shape.
+ * @param platform - Target platform definition
+ * @param entry - Standard MCP entry from `buildMcpEntry`
+ */
+function shapeEntryForPlatform(
+  platform: PlatformDef,
+  entry: { command: string; args: string[]; env: Record<string, string> },
+): object {
+  if (platform.entryShape === "opencode") {
+    return {
+      type: "local",
+      command: [entry.command, ...entry.args],
+      enabled: true,
+      environment: entry.env,
+    };
+  }
+  return entry;
+}
+
+function writeJsonConfig(
+  platform: PlatformDef,
+  entry: { command: string; args: string[]; env: Record<string, string> },
+) {
   const fullPath = expandPath(platform.configPath);
   mkdirSync(dirname(fullPath), { recursive: true });
 
@@ -355,7 +380,7 @@ function writeJsonConfig(platform: PlatformDef, entry: object) {
   }
 
   const mcpSection = (existing[platform.mcpKey] ?? {}) as Record<string, unknown>;
-  mcpSection["openfinclaw"] = entry;
+  mcpSection["openfinclaw"] = shapeEntryForPlatform(platform, entry);
   existing[platform.mcpKey] = mcpSection;
 
   writeFileSync(fullPath, JSON.stringify(existing, null, 2) + "\n");
