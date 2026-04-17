@@ -299,10 +299,11 @@ export async function executeDeepagentResearchSubmit(
       threadId,
       status: "running",
       hint:
-        "DO NOT sleep or wait on your own turn. Tell the user the task is submitted (~3-10 min), " +
-        "then STOP and return control. When the user next asks for progress, call " +
-        "fin_deepagent_research_poll ONCE with this taskId and report status. " +
-        "If done=true, then call fin_deepagent_research_finalize on the same turn.",
+        "Tell the user once: 'Research started (~3-10 min), I'll stream progress below.' " +
+        "Then IMMEDIATELY start calling fin_deepagent_research_poll repeatedly with this taskId. " +
+        "Each poll call blocks ~20s server-side then returns — DO NOT add your own sleep/wait. " +
+        "After each poll, briefly tell the user the current phase (e.g. 'still running: ${toolsUsed}'). " +
+        "Loop until done=true, then call fin_deepagent_research_finalize to fetch the full report.",
     };
   } catch (err) {
     return {
@@ -320,22 +321,36 @@ export const deepagentResearchPollSchema = {
   type: "object" as const,
   properties: {
     taskId: { type: "string", description: "Task ID from fin_deepagent_research_submit" },
+    waitSeconds: {
+      type: "number",
+      description:
+        "Server-side wait (seconds) before returning when task is still running. Default 20, max 30. " +
+        "This blocks inside the MCP server — the agent does NOT need to sleep on its own side.",
+    },
   },
   required: ["taskId"],
 };
 
+/** Default server-side wait (seconds) when task is still running. */
+const DEFAULT_POLL_WAIT_SECONDS = 20;
+/** Hard cap — stays well under typical MCP client 60s tool-call timeout. */
+const MAX_POLL_WAIT_SECONDS = 30;
+
 /**
- * Execute `fin_deepagent_research_poll` — fetch current progress of a research run.
+ * Execute `fin_deepagent_research_poll` — server-side-blocking poll.
  *
- * Returns `{ done, status, partialText, toolsUsed, handoffs, error? }`. When
- * `done: true`, call `fin_deepagent_research_finalize` to receive the full text
- * and clear the task from the store.
+ * When the task is still running, the handler sleeps for `waitSeconds` (default
+ * 20s, capped at 30s to stay below typical MCP client tool-call timeouts)
+ * before returning. The sleep happens **inside the MCP server process**, not on
+ * the agent side — so it is not affected by sandboxes that block standalone
+ * `sleep` (e.g. Claude Code). This lets the agent drive a multi-minute task
+ * with a handful of consecutive poll calls, no user input required.
  *
- * @param params - `taskId`
+ * @param params - `taskId` + optional `waitSeconds`
  * @param _config - Core configuration (unused; state is in-process)
  */
 export async function executeDeepagentResearchPoll(
-  params: { taskId: string },
+  params: { taskId: string; waitSeconds?: number },
   _config: OpenFinClawConfig,
 ) {
   const state = getDeepAgentTask(params.taskId);
@@ -347,22 +362,36 @@ export async function executeDeepagentResearchPoll(
         `or was never submitted in this process. Check thread messages via fin_deepagent_messages.`,
     };
   }
-  const done = state.status !== "running";
-  const preview = state.text.length > 1500 ? state.text.slice(-1500) : state.text;
+
+  // If still running, block inside the handler so the agent can chain poll
+  // calls without sleeping on its own side.
+  if (state.status === "running") {
+    const raw = params.waitSeconds ?? DEFAULT_POLL_WAIT_SECONDS;
+    const waitMs = Math.max(0, Math.min(MAX_POLL_WAIT_SECONDS, raw)) * 1000;
+    if (waitMs > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  // Re-read state after the wait — the task may have finished.
+  const latest = getDeepAgentTask(params.taskId) ?? state;
+  const done = latest.status !== "running";
+  // Keep payload small: short tail so consecutive polls don't blow up the LLM context.
+  const preview = latest.text.length > 600 ? latest.text.slice(-600) : latest.text;
   return {
     success: true as const,
-    taskId: state.taskId,
-    threadId: state.threadId,
-    status: state.status,
+    taskId: latest.taskId,
+    threadId: latest.threadId,
+    status: latest.status,
     done,
-    submittedAt: state.submittedAt,
-    completedAt: state.completedAt,
-    /** Last ~1500 chars of accumulated text so far (for LLM to read). */
+    submittedAt: latest.submittedAt,
+    completedAt: latest.completedAt,
+    /** Tail of accumulated text so far — short across many polls. */
     partialText: preview,
-    partialTextLength: state.text.length,
-    toolsUsed: state.toolsUsed.map((t) => ({ name: t.toolName, done: t.done })),
-    handoffs: state.handoffs,
-    error: state.error,
+    partialTextLength: latest.text.length,
+    toolsUsed: latest.toolsUsed.map((t) => ({ name: t.toolName, done: t.done })),
+    handoffs: latest.handoffs,
+    error: latest.error,
   };
 }
 

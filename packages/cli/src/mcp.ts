@@ -289,12 +289,14 @@ export async function startMcpServer() {
         description:
           "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId IMMEDIATELY.\n\n" +
           "REQUIRED BEHAVIOR AFTER CALLING:\n" +
-          "1. Tell the user in one sentence: 'Task submitted (taskId=...), takes ~5 min. Ask me to check progress anytime.'\n" +
-          "2. STOP your turn. Return control to the user. DO NOT try to wait.\n" +
-          "3. DO NOT call `sleep`, `Bash sleep 60`, `Monitor`, or any waiting mechanism — Claude Code's sandbox blocks these.\n" +
-          "4. When the user asks 'is it done?' / 'check progress' / 'what's the status' (or any similar intent), call fin_deepagent_research_poll once and report.\n" +
-          "5. When poll returns done=true, call fin_deepagent_research_finalize once to fetch the full report and show it to the user.\n\n" +
-          "Never poll on your own turn. Never loop. One user message → one poll call maximum.",
+          "1. Tell the user in one short line: 'Research started (~3-10 min), streaming progress below.'\n" +
+          "2. IMMEDIATELY start calling fin_deepagent_research_poll with the returned taskId. The poll tool " +
+          "   blocks ~20s SERVER-SIDE each call and then returns with current progress — you do NOT need to " +
+          "   sleep, use Bash sleep, Monitor, or any client-side waiting mechanism.\n" +
+          "3. Between polls, emit one short line summarizing the phase (e.g. 'still running · tools used: X').\n" +
+          "4. Keep calling poll until done=true, then call fin_deepagent_research_finalize on the same turn " +
+          "   to fetch the full report and present it to the user.\n\n" +
+          "Never add your own sleep/wait — the poll tool does the waiting for you.",
         inputSchema: {
           query: z.string().describe("Research question or analysis request"),
           threadId: z
@@ -310,14 +312,19 @@ export async function startMcpServer() {
       "fin_deepagent_research_poll",
       {
         description:
-          "Poll an in-progress research run ONCE — returns current status + last ~1500 chars of accumulated text.\n\n" +
+          "Poll an in-progress research run. Blocks inside the MCP server for waitSeconds (default 20s, " +
+          "max 30s) when the task is still running, then returns current status + short tail of accumulated text.\n\n" +
           "BEHAVIOR RULES:\n" +
-          "- Call this ONCE per user message, then STOP your turn and report the status to the user in one sentence.\n" +
-          "- DO NOT loop, DO NOT chain multiple polls, DO NOT use sleep/wait mechanisms between polls.\n" +
-          "- If done=false: tell user 'still running, ask me again in a minute', return control.\n" +
-          "- If done=true: call fin_deepagent_research_finalize immediately on the SAME turn to fetch the full report.",
+          "- This tool does the waiting for you — do NOT add your own sleep/Bash sleep/Monitor/setTimeout.\n" +
+          "- Call consecutively (poll → brief status to user → poll → ...) until done=true.\n" +
+          "- Each call is ~20s; a 5-minute task takes ~15 sequential calls.\n" +
+          "- When done=true, immediately call fin_deepagent_research_finalize on the same turn.",
         inputSchema: {
           taskId: z.string().describe("Task ID from fin_deepagent_research_submit"),
+          waitSeconds: z
+            .number()
+            .optional()
+            .describe("Server-side wait when still running (default 20, max 30). Usually leave default."),
         },
       },
       wrapHandler(config, executeDeepagentResearchPoll),
