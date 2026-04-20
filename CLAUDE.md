@@ -69,6 +69,77 @@ Tools are organized into 3 groups that can be loaded independently via `--tools=
 4. Optionally add CLI command in `packages/cli/src/cli.ts`，复用 `styles.ts` 里的美化 helper
 5. 新增 tool group 时同步更新：`mcp.ts` 的 `ALL_GROUPS` / `init.ts` 向导的 Step 2 选项 / CLI `--help` / 本文件 Tool Groups 列表
 
+## Creating Strategy Packages (FEP v2.0)
+
+策略包必须兼容 Hub 回测引擎。目录结构和代码格式要求：
+
+### 目录结构
+
+```
+my-strategy/
+├── fep.yaml           # 必须在根目录
+└── scripts/
+    └── strategy.py    # 策略代码（technical.entryPoint 指向此文件）
+```
+
+打包 ZIP 时从策略根目录打包（`cd my-strategy && zip -r ../pkg.zip fep.yaml scripts/`），不要包含外层目录。
+
+### fep.yaml 必须字段
+
+- `fep: "2.0"`
+- `identity.id` / `identity.name`（必填）
+- `technical.entryPoint: strategy.py`（指向 `scripts/` 下的文件名，**只写文件名不写路径**，如 `strategy.py` 而非 `scripts/strategy.py`）
+- `backtest.symbol` / `backtest.defaultPeriod` / `backtest.initialCapital`（必填）
+- `classification.riskProfile`：只接受 `"conservative" | "moderate" | "aggressive" | "speculative"`
+- `classification.market`：`"Crypto" | "US" | "CN" | "HK" | "Forex" | "Commodity"`
+- `backtest.defaultPeriod.endDate` 不要超过当前日期
+
+### 策略代码格式（Hub 回测引擎要求）
+
+**必须**导出 `compute(data, context)` 函数：
+
+```python
+import numpy as np
+
+def compute(data, context=None):
+    # data: DataFrame with columns close, high, low, open, volume
+    # context: dict with equity, cash, position
+    # Returns: dict with action (buy/sell/hold), price, reason, and optional amount/percent
+
+    close = data["close"].values
+
+    if len(close) < 20:
+        return {"action": "hold", "reason": "数据不足"}
+
+    # ... 策略逻辑 ...
+
+    # 买入
+    return {"action": "buy", "amount": buy_amount, "price": price, "reason": "..."}
+
+    # 全仓卖出
+    return {"action": "sell", "percent": 100, "price": price, "reason": "..."}
+
+    # 半仓卖出
+    return {"action": "sell", "percent": 50, "price": price, "reason": "..."}
+
+    # 持有
+    return {"action": "hold", "reason": "..."}
+```
+
+关键要求：
+- **卖出用 `percent` 字段**（不是 `quantity`），100 = 全仓，50 = 半仓
+- **position 获取入场价**：`position.get("entry_price") or position.get("avg_open") or position.get("avg_cost")`（Hub 字段名不固定，多试几个）
+- **context 字段**：`equity`（总权益）、`cash`（可用现金）、`position`（持仓 dict 或 None）
+
+### skill_validate 会检查
+
+1. fep.yaml 结构完整性（必填字段）
+2. `riskProfile` 枚举值是否 Hub 兼容
+3. 代码文件是否递归存在（不限于根目录）
+4. entryPoint 路径是否指向实际文件
+5. 代码中是否包含 `compute(data, context)` 函数
+6. `defaultPeriod.endDate` 是否在未来（warning）
+
 ## Testing
 
 - Framework: Vitest

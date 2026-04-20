@@ -895,10 +895,16 @@ export async function runInit(argv: string[] = []): Promise<void> {
 }
 
 /**
- * @returns true if the bare `openfinclaw` command resolves on PATH (user
- *   installed globally). When false, wizard hints use `npx -y @openfinclaw/cli`.
+ * @returns true if the bare `openfinclaw` command resolves on the *user's*
+ *   PATH (global install). When invoked via `npx`, `argv[1]` sits inside
+ *   an ephemeral `_npx` cache that's temporarily on PATH — we detect that
+ *   and return false so wizard hints fall back to `npx -y @openfinclaw/cli`.
  */
 function isBareCliOnPath(): boolean {
+  const self = process.argv[1] ?? "";
+  if (/[\\/]_npx[\\/]|[\\/]\.npm[\\/]_npx[\\/]/.test(self)) {
+    return false;
+  }
   try {
     if (process.platform === "win32") {
       execFileSync("where", ["openfinclaw"], { stdio: "ignore", windowsHide: true });

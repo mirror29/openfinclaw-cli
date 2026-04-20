@@ -85,7 +85,7 @@ export interface FepV2Classification {
   market?: "Crypto" | "US" | "CN" | "HK" | "Forex" | "Commodity";
   assetClasses?: string[];
   frequency?: "daily" | "weekly" | "monthly";
-  riskProfile?: "low" | "medium" | "high";
+  riskProfile?: "conservative" | "moderate" | "aggressive" | "speculative";
 }
 
 export interface FepV2Config {

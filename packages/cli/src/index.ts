@@ -20,11 +20,20 @@ function getVersion(): string {
 }
 
 /**
- * Whether the bare `openfinclaw` command resolves on PATH. When false, we
- * assume the user invoked us via `npx @openfinclaw/cli` and should show
- * `npx`-prefixed examples so copy-paste actually works.
+ * Whether the bare `openfinclaw` command resolves on the *user's* PATH.
+ *
+ * When npx invokes this binary, it first prepends its ephemeral cache dir
+ * to PATH, so a naive `command -v openfinclaw` always returns true inside
+ * the child process — even though the user's shell won't find it after
+ * the invocation returns. We detect that by looking at `process.argv[1]`:
+ * under npx it points into `…/_npx/…`. In that case we report "not on
+ * PATH" so examples fall back to `npx -y @openfinclaw/cli <cmd>`.
  */
 function isOpenfinclawOnPath(): boolean {
+  const self = process.argv[1] ?? "";
+  if (/[\\/]_npx[\\/]|[\\/]\.npm[\\/]_npx[\\/]/.test(self)) {
+    return false;
+  }
   try {
     if (process.platform === "win32") {
       execFileSync("where", ["openfinclaw"], { stdio: "ignore", windowsHide: true });
