@@ -68,6 +68,20 @@ Add to your agent platform's MCP config:
 
 ### 3. CLI Mode (Human Use)
 
+**Install once, then call `openfinclaw` directly** (recommended for terminal use):
+
+```bash
+# Install globally so the bare `openfinclaw` command works in any terminal
+npm install -g @openfinclaw/cli      # or: pnpm add -g @openfinclaw/cli
+
+# Now you can use the short form everywhere
+openfinclaw leaderboard --limit 10
+openfinclaw price AAPL
+openfinclaw doctor
+```
+
+If you prefer not to install globally, every command below also runs via `npx -y @openfinclaw/cli <cmd>` (slower first run while the package is fetched).
+
 ```bash
 # Option A: use key from init (writes ~/.openfinclaw/config.json)
 npx @openfinclaw/cli init
@@ -76,23 +90,23 @@ npx @openfinclaw/cli init
 export OPENFINCLAW_API_KEY=fch_your_key_here
 
 # Option C: pass API key for a single command (optional)
-npx @openfinclaw/cli compare AAPL,MSFT --api-key fch_your_key_here
+openfinclaw compare AAPL,MSFT --api-key fch_your_key_here
 
 # Query prices
-npx @openfinclaw/cli price AAPL
-npx @openfinclaw/cli price BTC/USDT
+openfinclaw price AAPL
+openfinclaw price BTC/USDT
 
 # Get K-line data
-npx @openfinclaw/cli kline 600519.SH --limit 30
+openfinclaw kline 600519.SH --limit 30
 
 # Compare assets
-npx @openfinclaw/cli compare AAPL,GOOGL,MSFT,AMZN
+openfinclaw compare AAPL,GOOGL,MSFT,AMZN
 
 # Search symbols
-npx @openfinclaw/cli search "tesla"
+openfinclaw search "tesla"
 
 # Diagnose configuration
-npx @openfinclaw/cli doctor
+openfinclaw doctor
 ```
 
 ### 4. DeepAgent (Optional — remote AI research & strategy generation)

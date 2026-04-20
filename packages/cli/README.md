@@ -80,30 +80,39 @@ Omit `OPENFINCLAW_DEEPAGENT_API_KEY` if you don't use the deepagent tool group.
 
 ### 3. Terminal CLI
 
+For repeated terminal use, install globally so you can call `openfinclaw` directly instead of prefixing every command with `npx`:
+
+```bash
+npm install -g @openfinclaw/cli     # or: pnpm add -g @openfinclaw/cli
+openfinclaw doctor                  # confirms the install + keys
+```
+
+> Not installing globally? Every example below also works prefixed with `npx -y @openfinclaw/cli` (slower first run).
+
 ```bash
 # Prices and K-lines
-npx @openfinclaw/cli price AAPL
-npx @openfinclaw/cli price BTC/USDT
-npx @openfinclaw/cli kline 600519.SH --limit 30
-npx @openfinclaw/cli compare AAPL,GOOGL,MSFT
-npx @openfinclaw/cli search tesla
+openfinclaw price AAPL
+openfinclaw price BTC/USDT
+openfinclaw kline 600519.SH --limit 30
+openfinclaw compare AAPL,GOOGL,MSFT
+openfinclaw search tesla
 
 # Strategy management
-npx @openfinclaw/cli leaderboard --limit 10
-npx @openfinclaw/cli strategy-info <uuid>
-npx @openfinclaw/cli fork <uuid>
-npx @openfinclaw/cli validate ./my-strategy
-npx @openfinclaw/cli publish ./my-strategy.zip
+openfinclaw leaderboard --limit 10
+openfinclaw strategy-info <uuid>
+openfinclaw fork <uuid>
+openfinclaw validate ./my-strategy
+openfinclaw publish ./my-strategy.zip
 
 # DeepAgent — real token-by-token streaming in terminal
 # Only requires OPENFINCLAW_DEEPAGENT_API_KEY (NOT the Hub fch_ key)
-npx @openfinclaw/cli deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
-npx @openfinclaw/cli deepagent skills
-npx @openfinclaw/cli deepagent packages
-npx @openfinclaw/cli deepagent download <package_id>
+openfinclaw deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
+openfinclaw deepagent skills
+openfinclaw deepagent packages
+openfinclaw deepagent download <package_id>
 
 # Diagnostics (works with any subset of keys)
-npx @openfinclaw/cli doctor
+openfinclaw doctor
 ```
 
 > **Hub key vs DeepAgent key.** The two services authenticate independently.

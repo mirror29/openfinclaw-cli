@@ -845,29 +845,69 @@ export async function runInit(argv: string[] = []): Promise<void> {
   }
 
   // ── Summary ──
+  const cliOnPath = isBareCliOnPath();
+  const terminalPrefix = cliOnPath ? "openfinclaw" : "npx -y @openfinclaw/cli";
+  const installHint = cliOnPath
+    ? null
+    : `${dim("Tip")} ${dim("→")} For a shorter ${cyan("openfinclaw <cmd>")} command, install globally: ${cyan("npm install -g @openfinclaw/cli")}`;
+
   if (clack) {
     const s = clack.spinner();
     s.start(`${dim("Verifying config...")}`);
     await new Promise((r) => setTimeout(r, 600));
     s.stop(`${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
-    clack.outro(
-      [
-        `${bold("Next")} ${dim("→")} Try asking your agent:`,
-        `  ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`,
-        "",
-        `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
-        `${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`,
-      ].join("\n"),
+    const outroLines = [
+      `${bold("In your AI agent")} ${dim("→")} try asking:`,
+      `  ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`,
+      "",
+      `${bold("In the terminal")} ${dim("→")} e.g.`,
+      `  ${cyan(`${terminalPrefix} leaderboard --limit 10`)}`,
+      `  ${cyan(`${terminalPrefix} price AAPL`)}`,
+      `  ${cyan(`${terminalPrefix} doctor`)}`,
+    ];
+    if (installHint) outroLines.push("", installHint);
+    outroLines.push(
+      "",
+      `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
+      `${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`,
     );
+    clack.outro(outroLines.join("\n"));
   } else {
     console.log();
     console.log(`  ${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
     console.log();
-    console.log(`  ${bold("Next")} ${dim("→")} Ask your agent:`);
+    console.log(`  ${bold("In your AI agent")} ${dim("→")} try asking:`);
     console.log(`    ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`);
+    console.log();
+    console.log(`  ${bold("In the terminal")} ${dim("→")} e.g.`);
+    console.log(`    ${cyan(`${terminalPrefix} leaderboard --limit 10`)}`);
+    console.log(`    ${cyan(`${terminalPrefix} price AAPL`)}`);
+    console.log(`    ${cyan(`${terminalPrefix} doctor`)}`);
+    if (installHint) {
+      console.log();
+      console.log(`  ${installHint}`);
+    }
+    console.log();
     console.log(`  ${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`);
     console.log(`  ${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`);
     console.log();
+  }
+}
+
+/**
+ * @returns true if the bare `openfinclaw` command resolves on PATH (user
+ *   installed globally). When false, wizard hints use `npx -y @openfinclaw/cli`.
+ */
+function isBareCliOnPath(): boolean {
+  try {
+    if (process.platform === "win32") {
+      execFileSync("where", ["openfinclaw"], { stdio: "ignore", windowsHide: true });
+    } else {
+      execFileSync("sh", ["-c", "command -v openfinclaw"], { stdio: "ignore" });
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
