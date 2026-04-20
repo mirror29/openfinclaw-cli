@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
+import { createInterface } from "node:readline";
 import { getUserConfigFilePath } from "@openfinclaw/core";
 
 // ─── Terminal Theme (no extra deps) ───────────────────────────────────
@@ -41,11 +42,6 @@ function hiCyan(s: string): string {
 }
 
 /** @param s - text */
-function magenta(s: string): string {
-  return sgr("35", s);
-}
-
-/** @param s - text */
 function hiMagenta(s: string): string {
   return sgr("95", s);
 }
@@ -66,32 +62,82 @@ function yellow(s: string): string {
 }
 
 /** @param s - text */
-function hiYellow(s: string): string {
-  return sgr("93", s);
-}
-
-/** @param s - text */
 function red(s: string): string {
   return sgr("31", s);
 }
 
+/** @param s - text */
+function boldCyan(s: string): string {
+  return sgr("1;36", s);
+}
+
+// ─── Banner ──────────────────────────────────────────────────────────
+
 /**
- * Render a compact geek-style banner.
+ * Big ANSI-Shadow "OpenFinClaw" ASCII art (6 rows × 90 cols).
+ */
+const BIG_BANNER_LINES: readonly string[] = [
+  " ██████╗ ██████╗ ███████╗███╗   ██╗███████╗██╗███╗   ██╗ ██████╗██╗      █████╗ ██╗    ██╗",
+  "██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██║████╗  ██║██╔════╝██║     ██╔══██╗██║    ██║",
+  "██║   ██║██████╔╝█████╗  ██╔██╗ ██║█████╗  ██║██╔██╗ ██║██║     ██║     ███████║██║ █╗ ██║",
+  "██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══╝  ██║██║╚██╗██║██║     ██║     ██╔══██║██║███╗██║",
+  "╚██████╔╝██║     ███████╗██║ ╚████║██║     ██║██║ ╚████║╚██████╗███████╗██║  ██║╚███╔███╔╝",
+  " ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═══╝ ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ ",
+] as const;
+
+/** Width in terminal cells of {@link BIG_BANNER_LINES}. */
+const BIG_BANNER_WIDTH = 90;
+
+/**
+ * Compact ASCII banner for narrow terminals (width ≥ 58).
+ */
+const COMPACT_BANNER_LINES: readonly string[] = [
+  "  ___                  ___ _      ___ _               ",
+  " / _ \\ _ __  ___ _ _  | __(_)_ _ / __| |__ ___ __ __ ",
+  "| (_) | '_ \\/ -_) ' \\ | _|| | ' \\ (__| / _` \\ V  V /",
+  " \\___/| .__/\\___|_||_|_|  |_|_||_\\___|_\\__,_|\\_/\\_/",
+  "      |_|                                              ",
+] as const;
+
+/** Width of {@link COMPACT_BANNER_LINES}. */
+const COMPACT_BANNER_WIDTH = 58;
+
+/**
+ * Apply a vertical magenta→cyan gradient to ASCII-art rows.
+ * @param lines - Raw ASCII lines, one per row
+ */
+function gradientLines(lines: readonly string[]): string[] {
+  const palette = ["38;5;213", "38;5;207", "38;5;177", "38;5;141", "38;5;111", "38;5;75"];
+  return lines.map((line, i) => sgr(palette[i] ?? "35", line));
+}
+
+/**
+ * Render the pre-clack banner block. Width-adaptive: falls back to a compact
+ * banner or plain title for narrow terminals.
  * @param version - CLI package version string, optional
  */
 function renderBanner(version?: string): string {
-  // clack 的 intro 会自带边框/前缀，这里避免再绘制外框，保持极简、对齐稳定
-  const v = version ? ` ${dim(`v${version}`)}` : "";
-  const logo = [
-    `${hiMagenta("   ____                  _")}`,
-    `${hiMagenta("  / __ \\____  ___  _____(_)___  ____ _      __")}`,
-    `${hiMagenta(" / / / / __ \\/ _ \\/ ___/ / __ \\/ __ \\ | /| / /")}`,
-    `${hiMagenta("/ /_/ / /_/ /  __/ /  / / / / / /_/ / |/ |/ /")}`,
-    `${hiMagenta("\\____/ .___/\\___/_/  /_/_/ /_/\\____/|__/|__/")}`,
-    `${hiMagenta("    /_/")}   ${hiCyan("MCP")} ${dim("·")} ${hiCyan("init")}${v}`,
-  ].join("\n");
-  const subtitle = dim("跨平台 MCP 配置向导 · 自动检测 · 一键写入");
-  return `${logo}\n${subtitle}`;
+  const cols = process.stdout.columns ?? 80;
+  const v = version ? `v${version}` : "";
+  const tagline = "Cross-platform MCP setup wizard · auto-detect · one-shot write";
+
+  if (cols >= BIG_BANNER_WIDTH + 2) {
+    const art = gradientLines(BIG_BANNER_LINES).join("\n");
+    const rule = dim("─".repeat(Math.min(BIG_BANNER_WIDTH, cols)));
+    const badge = `${boldCyan("MCP")} ${dim("·")} ${boldCyan("init")} ${dim(v)}`;
+    return `\n${art}\n${rule}\n  ${badge}  ${dim("·")}  ${dim(tagline)}\n`;
+  }
+
+  if (cols >= COMPACT_BANNER_WIDTH + 2) {
+    const art = gradientLines(COMPACT_BANNER_LINES).join("\n");
+    const rule = dim("─".repeat(Math.min(COMPACT_BANNER_WIDTH, cols)));
+    const badge = `${boldCyan("MCP")} ${dim("·")} ${boldCyan("init")} ${dim(v)}`;
+    return `\n${art}\n${rule}\n  ${badge}  ${dim("·")}  ${dim(tagline)}\n`;
+  }
+
+  // Very narrow (< 60 cols): plain title.
+  const title = `${boldCyan("OpenFinClaw")} ${dim("·")} ${hiMagenta("MCP · init")} ${dim(v)}`;
+  return `\n  ${title}\n  ${dim(tagline)}\n`;
 }
 
 /**
@@ -129,10 +175,10 @@ interface PlatformDef {
 
 const PLATFORMS: PlatformDef[] = [
   // ── Chat ──
-  { value: "claude-desktop", label: "Claude Desktop", hint: "Anthropic 桌面客户端", configPath: "~/Library/Application Support/Claude/claude_desktop_config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "chatgpt", label: "ChatGPT", hint: "OpenAI 桌面客户端", configPath: "~/Library/Application Support/chatgpt/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "chatbox", label: "Chatbox", hint: "多模型聊天客户端", configPath: "~/.chatbox/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "lm-studio", label: "LM Studio", hint: "本地模型推理", configPath: "~/.lmstudio/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "claude-desktop", label: "Claude Desktop", hint: "Anthropic desktop client", configPath: "~/Library/Application Support/Claude/claude_desktop_config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "chatgpt", label: "ChatGPT", hint: "OpenAI desktop client", configPath: "~/Library/Application Support/chatgpt/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "chatbox", label: "Chatbox", hint: "Multi-model chat client", configPath: "~/.chatbox/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "lm-studio", label: "LM Studio", hint: "Local model runtime", configPath: "~/.lmstudio/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── IDEs ──
   {
@@ -149,12 +195,12 @@ const PLATFORMS: PlatformDef[] = [
   { value: "cursor", label: "Cursor", hint: ".cursor/mcp.json", configPath: ".cursor/mcp.json", format: "json", mcpKey: "mcpServers" },
   { value: "trae", label: "Trae (ByteDance)", hint: ".trae/mcp.json", configPath: ".trae/mcp.json", format: "json", mcpKey: "mcpServers" },
   { value: "windsurf", label: "Windsurf", hint: "Codeium AI IDE", configPath: "~/.codeium/windsurf/mcp_config.json", format: "json", mcpKey: "mcpServers" },
-  { value: "zed", label: "Zed", hint: "高性能代码编辑器", configPath: ".zed/settings.json", format: "json", mcpKey: "context_servers" },
+  { value: "zed", label: "Zed", hint: "High-performance code editor", configPath: ".zed/settings.json", format: "json", mcpKey: "context_servers" },
   { value: "junie", label: "JetBrains Junie", hint: "JetBrains AI Agent", configPath: "~/.junie/mcp.json", format: "json", mcpKey: "mcpServers" },
   {
     value: "cline",
     label: "Cline",
-    hint: "VS Code 自主编码 Agent",
+    hint: "VS Code autonomous coding agent",
     // Cline (VS Code ext) 把 MCP settings 放在 VS Code globalStorage 下；此路径为 macOS 位置
     configPath: "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
     format: "json",
@@ -163,38 +209,46 @@ const PLATFORMS: PlatformDef[] = [
   {
     value: "roo-code",
     label: "Roo Code",
-    hint: ".roo/mcp.json (项目级)",
+    hint: ".roo/mcp.json (project-scoped)",
     configPath: ".roo/mcp.json",
     format: "json",
     mcpKey: "mcpServers",
   },
 
   // ── CLI Agents ──
-  { value: "opencode", label: "OpenCode", hint: "开源终端 AI", configPath: "~/.config/opencode/opencode.json", format: "json", mcpKey: "mcp", entryShape: "opencode", installPaths: ["~/.config/opencode", "~/opencode.json"] },
-  { value: "amazon-q", label: "Amazon Q CLI", hint: "AWS 命令行助手", configPath: "~/.amazonq/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "opencode", label: "OpenCode", hint: "Open-source terminal AI", configPath: "~/.config/opencode/opencode.json", format: "json", mcpKey: "mcp", entryShape: "opencode", installPaths: ["~/.config/opencode", "~/opencode.json"] },
+  { value: "amazon-q", label: "Amazon Q CLI", hint: "AWS CLI assistant", configPath: "~/.amazonq/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── Frameworks ──
   { value: "hermes", label: "Hermes Agent", hint: "~/.hermes/config.yaml", configPath: "~/.hermes/config.yaml", format: "yaml", mcpKey: "mcp_servers" },
-  { value: "beeai", label: "BeeAI", hint: "IBM AI Agent 框架", configPath: ".beeai/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "swarms", label: "Swarms", hint: "多 Agent 编排框架", configPath: ".swarms/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "beeai", label: "BeeAI", hint: "IBM AI Agent framework", configPath: ".beeai/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "swarms", label: "Swarms", hint: "Multi-agent orchestration", configPath: ".swarms/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── AI Agents ──
   {
     value: "openclaw",
     label: "OpenClaw",
-    hint: "AI Agent 平台",
+    hint: "AI Agent platform",
     configPath: "~/.openclaw/mcp.json",
     format: "json",
     mcpKey: "mcpServers",
     installCliCommands: ["openclaw"],
   },
-  { value: "nanoclaw", label: "NanoClaw", hint: "轻量 AI Agent", configPath: "~/.nanoclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "nanoclaw", label: "NanoClaw", hint: "Lightweight AI Agent", configPath: "~/.nanoclaw/mcp.json", format: "json", mcpKey: "mcpServers" },
 
   // ── Other ──
-  { value: "v0", label: "v0 (Vercel)", hint: "AI 前端生成平台", configPath: ".v0/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "postman", label: "Postman", hint: "API 开发平台", configPath: "~/postman/mcp.json", format: "json", mcpKey: "mcpServers" },
-  { value: "amp", label: "Amp (Sourcegraph)", hint: "代码智能 Agent", configPath: "~/.amp/config.json", format: "json", mcpKey: "mcpServers" },
+  { value: "v0", label: "v0 (Vercel)", hint: "AI frontend generator", configPath: ".v0/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "postman", label: "Postman", hint: "API development platform", configPath: "~/postman/mcp.json", format: "json", mcpKey: "mcpServers" },
+  { value: "amp", label: "Amp (Sourcegraph)", hint: "Code-intelligence agent", configPath: "~/.amp/config.json", format: "json", mcpKey: "mcpServers" },
 ];
+
+const TOOL_GROUP_CHOICES = [
+  { value: "datahub", label: "datahub", hint: "Market data — price / kline / crypto / compare / search (~700 tokens)" },
+  { value: "strategy", label: "strategy", hint: "Strategy mgmt — publish / validate / fork / leaderboard (~1,000 tokens)" },
+  { value: "deepagent", label: "deepagent", hint: "Remote AI agent — research / backtest / strategy gen (separate key, ~1,400 tokens)" },
+] as const;
+
+const ALL_GROUP_VALUES = TOOL_GROUP_CHOICES.map((g) => g.value);
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -483,25 +537,232 @@ function writeUserConfigFile(apiKey: string, deepagentApiKey?: string): string {
   return fullPath;
 }
 
+// ─── Interactivity Detection & Fallback Prompts ──────────────────────
+
+/**
+ * Whether the current process can drive clack's key-level prompts.
+ *
+ * Clack (`@clack/prompts`) relies on `process.stdin.setRawMode(true)` to
+ * capture arrow/space keystrokes. On Windows legacy consoles, SSH pipes,
+ * some CI runners, and when stdin is redirected, raw mode is unavailable
+ * and multiselect silently falls through with its `initialValues`. When
+ * that happens we MUST switch to a line-oriented fallback — otherwise the
+ * user sees their "auto-selected" platforms written without any prompt.
+ */
+function canUseClackPrompts(): boolean {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  if (typeof process.stdin.setRawMode !== "function") return false;
+  // CI=true and similar sentinels force non-interactive.
+  if (process.env.CI === "true" || process.env.CI === "1") return false;
+  return true;
+}
+
+/**
+ * Read a single line from stdin. Closes the readline interface so the
+ * process can exit cleanly.
+ * @param prompt - Prompt text printed before the input cursor
+ */
+function readLine(prompt: string): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(prompt, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+interface ChoiceLike {
+  value: string;
+  label: string;
+  hint?: string;
+}
+
+/**
+ * Line-based multi-select fallback used when clack's raw-mode prompt can't
+ * run. Renders a numbered list and parses numeric/comma input.
+ *
+ * @param title - Section title (already styled)
+ * @param options - Choices to render
+ * @param initial - Pre-selected values
+ * @param allowAll - Accept the literal "all" to select every option
+ */
+async function multiSelectFallback(
+  title: string,
+  options: readonly ChoiceLike[],
+  initial: readonly string[],
+  allowAll = true,
+): Promise<string[]> {
+  console.log();
+  console.log(`  ${bold(title)}`);
+  console.log();
+  const initialSet = new Set(initial);
+  options.forEach((opt, i) => {
+    const num = String(i + 1).padStart(2, " ");
+    const mark = initialSet.has(opt.value) ? hiGreen("●") : dim("○");
+    const hint = opt.hint ? `  ${dim(`— ${opt.hint}`)}` : "";
+    console.log(`    ${dim(num + ".")}  ${mark}  ${opt.label}${hint}`);
+  });
+  console.log();
+  const hintLine = allowAll
+    ? "Enter numbers (space/comma separated) · Enter = detected · 'all' = select all · 'none' = clear"
+    : "Enter numbers (space/comma separated) · Enter = default · 'none' = clear";
+  console.log(dim(`    ${hintLine}`));
+  const answer = (await readLine(`    ${cyan("▸")} `)).trim();
+  if (answer === "") return [...initial];
+  const lower = answer.toLowerCase();
+  if (lower === "none" || lower === "0") return [];
+  if (allowAll && lower === "all") return options.map((o) => o.value);
+  const picked = new Set<string>();
+  for (const tok of answer.split(/[\s,]+/).filter(Boolean)) {
+    const n = Number.parseInt(tok, 10);
+    if (Number.isInteger(n) && n >= 1 && n <= options.length) {
+      picked.add(options[n - 1]!.value);
+    }
+  }
+  return [...picked];
+}
+
+/**
+ * Line-based password fallback — prompts on stdout and reads a line from
+ * stdin without echo suppression. We intentionally don't try to hide input
+ * when clack isn't available, because doing so also needs raw mode.
+ * @param title - Prompt label
+ */
+async function secretFallback(title: string): Promise<string> {
+  const answer = await readLine(`    ${cyan("▸")} ${title} `);
+  return answer.trim();
+}
+
+// ─── Non-Interactive Flag Parsing ────────────────────────────────────
+
+interface InitFlags {
+  yes: boolean;
+  platforms?: string[];
+  toolGroups?: string[];
+  apiKey?: string;
+  deepagentApiKey?: string;
+  forceFallback: boolean;
+  help: boolean;
+}
+
+/**
+ * Parse `init`-specific flags. Unknown flags are ignored so older callers
+ * stay compatible.
+ * @param argv - Args after the `init` subcommand (i.e. `process.argv.slice(3)`)
+ */
+function parseInitFlags(argv: string[]): InitFlags {
+  const out: InitFlags = { yes: false, forceFallback: false, help: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!;
+    const [keyRaw, inlineVal] = a.startsWith("--") ? a.slice(2).split("=") : ["", undefined];
+    const take = (): string | undefined => {
+      if (inlineVal !== undefined) return inlineVal;
+      const next = argv[i + 1];
+      if (next && !next.startsWith("--")) {
+        i++;
+        return next;
+      }
+      return undefined;
+    };
+    const key = keyRaw ?? "";
+    switch (key) {
+      case "yes":
+      case "y":
+        out.yes = true;
+        break;
+      case "help":
+      case "h":
+        out.help = true;
+        break;
+      case "no-interactive":
+      case "non-interactive":
+        out.forceFallback = true;
+        break;
+      case "platforms": {
+        const v = take();
+        if (v) out.platforms = v.split(",").map((s) => s.trim()).filter(Boolean);
+        break;
+      }
+      case "tool-groups":
+      case "tools": {
+        const v = take();
+        if (v) out.toolGroups = v.split(",").map((s) => s.trim()).filter(Boolean);
+        break;
+      }
+      case "api-key": {
+        const v = take();
+        if (v) out.apiKey = v;
+        break;
+      }
+      case "deepagent-api-key": {
+        const v = take();
+        if (v) out.deepagentApiKey = v;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
+function printInitHelp(): void {
+  const lines = [
+    "",
+    `  ${boldCyan("openfinclaw init")}  ${dim("Interactive MCP setup wizard")}`,
+    "",
+    `  ${bold("Interactive (default)")}`,
+    `    openfinclaw init`,
+    "",
+    `  ${bold("Non-interactive / scripted")}`,
+    `    --yes, -y                      Skip every confirmation that can be skipped`,
+    `    --platforms <a,b,c>            Target platforms (e.g. cursor,claude-code)`,
+    `    --tool-groups <a,b,c>          Tool groups (datahub / strategy / deepagent)`,
+    `    --api-key <fch_...>            Hub API key`,
+    `    --deepagent-api-key <key>      DeepAgent API key (optional)`,
+    `    --non-interactive              Force line-input mode (bypass clack)`,
+    "",
+    `  ${bold("Example")}`,
+    `    openfinclaw init --yes --platforms cursor,claude-code \\`,
+    `                     --tool-groups datahub,deepagent \\`,
+    `                     --api-key fch_xxx --deepagent-api-key <key>`,
+    "",
+  ];
+  console.log(lines.join("\n"));
+}
+
 // ─── Main Wizard ─────────────────────────────────────────────────────
 
-export async function runInit() {
-  let clack: typeof import("@clack/prompts");
-  try {
-    clack = await import("@clack/prompts");
-  } catch {
-    console.error("@clack/prompts not found. Running in basic mode.\n");
-    runBasicInit();
+/**
+ * Run the interactive `init` wizard.
+ * @param argv - Args after the `init` subcommand (flags; positional args ignored)
+ */
+export async function runInit(argv: string[] = []): Promise<void> {
+  const flags = parseInitFlags(argv);
+  if (flags.help) {
+    printInitHelp();
     return;
   }
 
-  clack.intro(renderBanner());
+  // Print the brand banner OUTSIDE clack.intro so it doesn't get truncated
+  // by the `│ ` prefix clack adds to every line inside its box.
+  process.stdout.write(renderBanner(getCliVersion()));
 
-  // ── Step 1: Select platforms ──
-  clack.log.step(`${cyan("Step 1")} 选择要配置的 AI Agent 平台`);
+  let clack: typeof import("@clack/prompts") | undefined;
+  const useClack = canUseClackPrompts() && !flags.forceFallback;
+  if (useClack) {
+    try {
+      clack = await import("@clack/prompts");
+    } catch {
+      clack = undefined;
+    }
+  }
+
   const platformStates = detectPlatformStates();
   const detected = selectDetectedPlatforms(platformStates);
 
+  // ── Stats header (works in both modes) ──
   {
     let installedCount = 0;
     let configuredCount = 0;
@@ -510,105 +771,49 @@ export async function runInit() {
       if (s?.installed) installedCount++;
       if (s?.hasConfig) configuredCount++;
     }
-    clack.log.info(
-      `${bold("Detected")} ${dim("→")} ${hiGreen(`${installedCount} installed`)} ${dim("·")} ${hiCyan(`${configuredCount} configured`)}`,
-    );
-  }
-
-  const platforms = await clack.multiselect({
-    message:
-      `${dim("自动检测安装痕迹与现有 MCP 配置（空格选择，回车确认）")}`,
-    options: PLATFORMS.map((p) => ({
-      value: p.value,
-      label: p.label,
-      hint: formatDetectHint(p, platformStates.get(p.value) ?? { hasConfig: false, installed: false }),
-    })),
-    initialValues: [...detected],
-  });
-  if (clack.isCancel(platforms) || (platforms as string[]).length === 0) {
-    clack.cancel(dim("已取消"));
-    process.exit(0);
-  }
-
-  // ── Step 2: Select tool groups ──
-  clack.log.step(`${cyan("Step 2")} 选择要启用的工具组`);
-
-  const toolGroups = await clack.multiselect({
-    message: `${dim("按需选择，减少不必要的 Token 消耗")}`,
-    options: [
-      { value: "datahub", label: "datahub", hint: "行情数据 — 价格/K线/加密/对比/搜索 (~700 tokens)" },
-      { value: "strategy", label: "strategy", hint: "策略管理 — 发布/验证/Fork/排行榜 (~1,000 tokens)" },
-      { value: "deepagent", label: "deepagent", hint: "远程 AI Agent — 研究/回测/策略生成（需独立 Key）(~1,400 tokens)" },
-    ],
-    initialValues: ["datahub", "strategy", "deepagent"],
-  });
-  if (clack.isCancel(toolGroups)) {
-    clack.cancel(dim("已取消"));
-    process.exit(0);
-  }
-
-  // ── Step 3: Enter API Key ──
-  clack.log.step(`${cyan("Step 3")} 输入 API Key`);
-
-  // Show where to get the key
-  clack.log.info(`${dim("还没有 API Key?")} ${cyan("https://hub.openfinclaw.ai")}`);
-
-  const apiKey = await clack.password({
-    message: `${dim("请输入 API Key（通常以 fch_ 开头）")}`,
-  });
-  if (clack.isCancel(apiKey) || !apiKey) {
-    clack.cancel(dim("已取消"));
-    process.exit(0);
-  }
-
-  // Validate key format
-  if (!(apiKey as string).startsWith("fch_")) {
-    clack.log.warn(`${yellow("⚠")} API Key 通常以 fch_ 开头，请确认是否正确`);
-    const confirm = await clack.select({
-      message: `${dim("仍然继续？")}`,
-      options: [
-        { value: "yes", label: "继续使用这个 Key" },
-        { value: "no", label: "重新输入" },
-      ],
-    });
-    if (clack.isCancel(confirm) || confirm === "no") {
-      clack.cancel(dim("已取消"));
-      process.exit(0);
-    }
-  }
-
-  // ── Step 3.5: DeepAgent API Key（可选） ──
-  let deepagentApiKey: string | undefined;
-  if ((toolGroups as string[]).includes("deepagent")) {
-    clack.log.step(`${cyan("Step 3.5")} DeepAgent API Key ${dim("（可选 · 启用 AI 研究与策略生成）")}`);
-    clack.log.info(`${dim("DeepAgent 独立于 Hub，使用不同的 API Key。")}`);
-    const dpInput = await clack.password({
-      message: `${dim("粘贴 DeepAgent API Key（回车跳过）")}`,
-    });
-    if (clack.isCancel(dpInput)) {
-      clack.cancel(dim("已取消"));
-      process.exit(0);
-    }
-    const dp = (dpInput as string).trim();
-    if (dp.length > 0) {
-      deepagentApiKey = dp;
-      clack.log.success(`${green("✔")} DeepAgent Key 已接受`);
+    const statsLine = `${bold("Detected")} ${dim("→")} ${hiGreen(`${installedCount} installed`)} ${dim("·")} ${hiCyan(`${configuredCount} configured`)}`;
+    if (clack) {
+      clack.intro(`${boldCyan("MCP · init")} ${dim("·")} ${dim("cross-platform setup wizard")}`);
+      clack.log.info(statsLine);
     } else {
-      clack.log.info(
-        dim(
-          "已跳过 — 仅 fin_deepagent_health / fin_deepagent_skills 可用；其他 deepagent 工具会提示配置 Key。",
-        ),
-      );
+      console.log(`  ${statsLine}`);
     }
+  }
+
+  // ── Step 1: Platforms ──
+  const selectedPlatforms: string[] = await resolvePlatforms(flags, clack, platformStates, detected);
+  if (selectedPlatforms.length === 0) {
+    printCancel(clack, "No platform selected — cancelled.");
+    process.exit(0);
+  }
+
+  // ── Step 2: Tool groups ──
+  const selectedGroups: string[] = await resolveToolGroups(flags, clack);
+  if (selectedGroups.length === 0) {
+    printCancel(clack, "No tool group selected — cancelled.");
+    process.exit(0);
+  }
+
+  // ── Step 3: API key ──
+  const hubKey = await resolveApiKey(flags, clack);
+  if (!hubKey) {
+    printCancel(clack, "No API key provided — cancelled.");
+    process.exit(0);
+  }
+
+  // ── Step 3.5: DeepAgent key (optional) ──
+  let deepagentKey: string | undefined;
+  if (selectedGroups.includes("deepagent")) {
+    deepagentKey = await resolveDeepagentKey(flags, clack);
   }
 
   // ── Step 4: Write configs ──
-  clack.log.step(`${cyan("Step 4")} 写入配置文件`);
-
-  const entry = buildMcpEntry(toolGroups as string[], apiKey as string, deepagentApiKey);
+  const entry = buildMcpEntry(selectedGroups, hubKey, deepagentKey);
   let successCount = 0;
 
-  for (const pv of platforms as string[]) {
+  printStep(clack, "Step 4", "Writing config files");
+
+  for (const pv of selectedPlatforms) {
     const platform = PLATFORMS.find((p) => p.value === pv);
     if (!platform) continue;
     try {
@@ -616,62 +821,301 @@ export async function runInit() {
         platform.format === "yaml"
           ? writeYamlConfig(platform, entry)
           : writeJsonConfig(platform, entry);
-      clack.log.success(formatPathWrite(platform.label, writtenPath));
+      printSuccess(clack, formatPathWrite(platform.label, writtenPath));
       successCount++;
     } catch (err) {
-      clack.log.error(
-        `${red("✖")} ${platform.label} 写入失败: ${err instanceof Error ? err.message : String(err)}`,
+      printError(
+        clack,
+        `${platform.label} write failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
   try {
-    const userConfigPath = writeUserConfigFile(apiKey as string, deepagentApiKey);
-    clack.log.success(
-      `${green("✔")} ${bold("CLI 配置已保存")}  ${dim("→")}  ${cyan(userConfigPath)} ${dim("（终端可直接运行 openfinclaw，无需 export）")}`,
+    const userConfigPath = writeUserConfigFile(hubKey, deepagentKey);
+    printSuccess(
+      clack,
+      `${bold("CLI config saved")}  ${dim("→")}  ${cyan(userConfigPath)} ${dim("(run `openfinclaw` directly — no export needed)")}`,
     );
   } catch (err) {
-    clack.log.warn(
-      `${yellow("⚠")} 写入 ~/.openfinclaw/config.json 失败: ${err instanceof Error ? err.message : String(err)}`,
+    printWarn(
+      clack,
+      `Failed to write ~/.openfinclaw/config.json: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
   // ── Summary ──
-  const s = clack.spinner();
-  s.start(`${dim("验证配置...")}`);
-  await new Promise((r) => setTimeout(r, 800));
-  s.stop(`${green("✔")} ${bold(`${successCount} 个平台`)} 配置完成`);
+  if (clack) {
+    const s = clack.spinner();
+    s.start(`${dim("Verifying config...")}`);
+    await new Promise((r) => setTimeout(r, 600));
+    s.stop(`${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
+    clack.outro(
+      [
+        `${bold("Next")} ${dim("→")} Try asking your agent:`,
+        `  ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`,
+        "",
+        `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
+        `${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`,
+      ].join("\n"),
+    );
+  } else {
+    console.log();
+    console.log(`  ${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
+    console.log();
+    console.log(`  ${bold("Next")} ${dim("→")} Ask your agent:`);
+    console.log(`    ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`);
+    console.log(`  ${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`);
+    console.log(`  ${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`);
+    console.log();
+  }
+}
 
-  clack.outro(
-    [
-      `${bold("Next")} ${dim("→")} 试试在你的 Agent 中说：${cyan("“查询 AAPL 的价格”")}`,
-      "",
-      `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
-      `${dim("API Key")}   ${cyan("https://hub.openfinclaw.ai")}`,
-    ].join("\n"),
+// ─── Step Resolvers (route to clack or fallback) ─────────────────────
+
+/**
+ * @returns Final list of platform values to configure
+ */
+async function resolvePlatforms(
+  flags: InitFlags,
+  clack: typeof import("@clack/prompts") | undefined,
+  states: Map<string, PlatformDetectInfo>,
+  detected: Set<string>,
+): Promise<string[]> {
+  if (flags.platforms) {
+    const known = new Set(PLATFORMS.map((p) => p.value));
+    const valid = flags.platforms.filter((v) => known.has(v));
+    const unknown = flags.platforms.filter((v) => !known.has(v));
+    if (unknown.length > 0) {
+      printWarn(clack, `Unknown platforms ignored: ${unknown.join(", ")}`);
+    }
+    return valid;
+  }
+  if (flags.yes) return [...detected];
+
+  printStep(clack, "Step 1", "Select AI agent platforms to configure");
+
+  if (clack) {
+    const result = await clack.multiselect({
+      message: dim("Auto-detected installs & existing MCP configs (space = toggle, enter = confirm)"),
+      options: PLATFORMS.map((p) => ({
+        value: p.value,
+        label: p.label,
+        hint: formatDetectHint(p, states.get(p.value) ?? { hasConfig: false, installed: false }),
+      })),
+      initialValues: [...detected],
+      required: false,
+    });
+    if (clack.isCancel(result)) process.exit(0);
+    return result as string[];
+  }
+
+  return multiSelectFallback(
+    "Step 1 · Select AI agent platforms to configure",
+    PLATFORMS.map((p) => ({
+      value: p.value,
+      label: p.label,
+      hint: formatDetectHint(p, states.get(p.value) ?? { hasConfig: false, installed: false }),
+    })),
+    [...detected],
   );
 }
 
-// ─── Fallback (no @clack/prompts) ────────────────────────────────────
+async function resolveToolGroups(
+  flags: InitFlags,
+  clack: typeof import("@clack/prompts") | undefined,
+): Promise<string[]> {
+  if (flags.toolGroups) {
+    const valid = flags.toolGroups.filter((v) => ALL_GROUP_VALUES.includes(v as (typeof ALL_GROUP_VALUES)[number]));
+    const unknown = flags.toolGroups.filter((v) => !ALL_GROUP_VALUES.includes(v as (typeof ALL_GROUP_VALUES)[number]));
+    if (unknown.length > 0) {
+      printWarn(clack, `Unknown tool groups ignored: ${unknown.join(", ")}`);
+    }
+    return valid.length > 0 ? valid : [...ALL_GROUP_VALUES];
+  }
+  if (flags.yes) return [...ALL_GROUP_VALUES];
 
-function runBasicInit() {
-  console.log("OpenFinClaw MCP Server — Basic Setup\n");
-  console.log(
-    "Set the OPENFINCLAW_API_KEY environment variable, then add this to your agent's MCP config:\n",
+  printStep(clack, "Step 2", "Select tool groups to enable");
+
+  if (clack) {
+    const result = await clack.multiselect({
+      message: dim("Enable only what you need to save tokens"),
+      options: TOOL_GROUP_CHOICES.map((c) => ({ value: c.value, label: c.label, hint: c.hint })),
+      initialValues: [...ALL_GROUP_VALUES],
+      required: false,
+    });
+    if (clack.isCancel(result)) process.exit(0);
+    return result as string[];
+  }
+
+  return multiSelectFallback(
+    "Step 2 · Select tool groups to enable",
+    TOOL_GROUP_CHOICES,
+    [...ALL_GROUP_VALUES],
   );
-  console.log(
-    JSON.stringify(
-      {
-        mcpServers: {
-          openfinclaw: {
-            command: "npx",
-            args: ["@openfinclaw/cli", "serve"],
-            env: { OPENFINCLAW_API_KEY: "<your-key>" },
-          },
-        },
-      },
-      null,
-      2,
-    ),
+}
+
+async function resolveApiKey(
+  flags: InitFlags,
+  clack: typeof import("@clack/prompts") | undefined,
+): Promise<string | undefined> {
+  if (flags.apiKey) return flags.apiKey.trim();
+
+  printStep(clack, "Step 3", "Enter API key");
+  printInfo(clack, `${dim("Don't have one yet?")} ${cyan("https://hub.openfinclaw.ai")}`);
+
+  let key: string | undefined;
+  if (clack) {
+    const result = await clack.password({
+      message: dim("Paste your API key (usually starts with fch_)"),
+    });
+    if (clack.isCancel(result)) return undefined;
+    key = (result as string).trim();
+  } else {
+    key = await secretFallback(dim("API key (usually starts with fch_):"));
+  }
+
+  if (!key) return undefined;
+
+  if (!key.startsWith("fch_")) {
+    printWarn(clack, `${yellow("⚠")} API keys usually start with fch_ — double-check this value`);
+    if (!flags.yes) {
+      const confirmed = await confirmYesNo(clack, "Continue with this key?", true);
+      if (!confirmed) return undefined;
+    }
+  }
+  return key;
+}
+
+async function resolveDeepagentKey(
+  flags: InitFlags,
+  clack: typeof import("@clack/prompts") | undefined,
+): Promise<string | undefined> {
+  if (flags.deepagentApiKey) return flags.deepagentApiKey.trim();
+  if (flags.yes) return undefined;
+
+  printStep(clack, "Step 3.5", `DeepAgent API key ${dim("(optional · unlocks AI research & strategy gen)")}`);
+  printInfo(clack, dim("DeepAgent is a separate service with its own API key."));
+
+  let dp: string | undefined;
+  if (clack) {
+    const result = await clack.password({
+      message: dim("Paste your DeepAgent API key (enter to skip)"),
+    });
+    if (clack.isCancel(result)) process.exit(0);
+    dp = (result as string).trim();
+  } else {
+    dp = await secretFallback(dim("DeepAgent API key (enter to skip):"));
+  }
+
+  if (dp && dp.length > 0) {
+    printSuccess(clack, `${green("✔")} DeepAgent key accepted`);
+    return dp;
+  }
+  printInfo(
+    clack,
+    dim("Skipped — only fin_deepagent_health / fin_deepagent_skills remain usable; other deepagent tools will prompt to configure a key."),
   );
+  return undefined;
+}
+
+async function confirmYesNo(
+  clack: typeof import("@clack/prompts") | undefined,
+  question: string,
+  defaultYes: boolean,
+): Promise<boolean> {
+  if (clack) {
+    const result = await clack.select({
+      message: dim(question),
+      options: [
+        { value: "yes", label: "Continue" },
+        { value: "no", label: "Cancel" },
+      ],
+      initialValue: defaultYes ? "yes" : "no",
+    });
+    if (clack.isCancel(result)) return false;
+    return result === "yes";
+  }
+  const hint = defaultYes ? "[Y/n]" : "[y/N]";
+  const answer = (await readLine(`    ${cyan("▸")} ${question} ${dim(hint)} `)).trim().toLowerCase();
+  if (!answer) return defaultYes;
+  return answer === "y" || answer === "yes";
+}
+
+// ─── Logging Helpers (route to clack or plain console) ───────────────
+
+function printStep(
+  clack: typeof import("@clack/prompts") | undefined,
+  step: string,
+  text: string,
+): void {
+  if (clack) {
+    clack.log.step(`${cyan(step)} ${text}`);
+  } else {
+    console.log();
+    console.log(`  ${cyan(step)}  ${bold(text)}`);
+  }
+}
+
+function printInfo(
+  clack: typeof import("@clack/prompts") | undefined,
+  text: string,
+): void {
+  if (clack) clack.log.info(text);
+  else console.log(`    ${text}`);
+}
+
+function printSuccess(
+  clack: typeof import("@clack/prompts") | undefined,
+  text: string,
+): void {
+  if (clack) clack.log.success(text);
+  else console.log(`    ${green("✔")} ${text}`);
+}
+
+function printWarn(
+  clack: typeof import("@clack/prompts") | undefined,
+  text: string,
+): void {
+  if (clack) clack.log.warn(text);
+  else console.log(`    ${yellow("⚠")} ${text}`);
+}
+
+function printError(
+  clack: typeof import("@clack/prompts") | undefined,
+  text: string,
+): void {
+  if (clack) clack.log.error(`${red("✖")} ${text}`);
+  else console.error(`    ${red("✖")} ${text}`);
+}
+
+function printCancel(
+  clack: typeof import("@clack/prompts") | undefined,
+  text: string,
+): void {
+  if (clack) clack.cancel(dim(text));
+  else console.log(`\n  ${dim(text)}\n`);
+}
+
+// ─── CLI Version Lookup ──────────────────────────────────────────────
+
+/**
+ * Best-effort read of the CLI package version from disk. Returns `undefined`
+ * when the package.json can't be found (e.g. bundled single-file builds).
+ */
+function getCliVersion(): string | undefined {
+  try {
+    const here = dirname(new URL(import.meta.url).pathname);
+    // Walk up from dist/init.js → packages/cli/package.json
+    for (const rel of ["../package.json", "../../package.json"]) {
+      const candidate = join(here, rel);
+      if (existsSync(candidate)) {
+        const pkg = JSON.parse(readFileSync(candidate, "utf-8")) as { version?: string };
+        if (pkg.version) return pkg.version;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return undefined;
 }

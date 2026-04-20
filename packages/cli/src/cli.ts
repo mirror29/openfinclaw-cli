@@ -104,13 +104,13 @@ function fmtTime(v: unknown): string {
   return d.toLocaleString();
 }
 
-/** Chinese labels for board types */
+/** Board-type display labels */
 const BOARD_NAMES: Record<string, string> = {
-  composite: "综合榜",
-  returns: "收益榜",
-  risk: "风控榜",
-  popular: "人气榜",
-  rising: "新星榜",
+  composite: "Composite",
+  returns: "Returns",
+  risk: "Risk",
+  popular: "Popular",
+  rising: "Rising",
 };
 
 /**
@@ -194,7 +194,7 @@ export async function runCli(command: string, args: string[]) {
             prevClose = close;
           }
           if (result.count > 10)
-            console.log(color.gray(`  … 另外 ${result.count - 10} 条已省略`));
+            console.log(color.gray(`  … ${result.count - 10} more row(s) hidden`));
           console.log();
         }
         break;
@@ -220,7 +220,7 @@ export async function runCli(command: string, args: string[]) {
         if (outputJson) {
           printJson(result);
         } else if ("comparison" in result && result.comparison) {
-          console.log(header("资产对比"));
+          console.log(header("Asset comparison"));
           for (const item of result.comparison as Array<Record<string, unknown>>) {
             if ("error" in item) {
               console.log(errorLine(`${item.symbol}: ${item.error}`));
@@ -253,7 +253,7 @@ export async function runCli(command: string, args: string[]) {
           printJson(result);
         } else {
           console.log(
-            header(`搜索 "${result.query}"  ${color.gray(`· ${result.count} 条结果`)}`),
+            header(`Search "${result.query}"  ${color.gray(`· ${result.count} result(s)`)}`),
           );
           for (const r of result.results as Array<Record<string, unknown>>) {
             const symStr = String(r.symbol ?? r.id ?? "");
@@ -283,17 +283,17 @@ export async function runCli(command: string, args: string[]) {
           const boardLabel = BOARD_NAMES[boardType] ?? result.board;
           console.log(
             header(
-              `${boardLabel}  ${color.gray(`Top ${result.strategies.length} · 共 ${result.total} 个策略`)}`,
+              `${boardLabel}  ${color.gray(`Top ${result.strategies.length} · ${result.total} strategies total`)}`,
             ),
           );
           console.log(
             "  " +
               color.gray(
-                padRight("排名", 6) +
-                  padRight("名称", 32) +
-                  padRight("市场", 6) +
-                  padLeft("收益(自发布)", 16) +
-                  padLeft("夏普", 10),
+                padRight("Rank", 6) +
+                  padRight("Name", 32) +
+                  padRight("Mkt", 6) +
+                  padLeft("Return (since pub)", 20) +
+                  padLeft("Sharpe", 10),
               ),
           );
           for (const s of result.strategies) {
@@ -306,7 +306,7 @@ export async function runCli(command: string, args: string[]) {
                 color.boldYellow(padRight(rankStr, 6)) +
                 padRight(truncate(s.name, 30), 32) +
                 padRight(String(s.market ?? "—"), 6) +
-                padLeft(`${trendArrow(retPct)} ${formatPercent(retPct, 2)}`, 16) +
+                padLeft(`${trendArrow(retPct)} ${formatPercent(retPct, 2)}`, 20) +
                 padLeft(
                   sharpe != null ? color.bold(sharpe.toFixed(2)) : color.gray("—"),
                   10,
@@ -314,8 +314,8 @@ export async function runCli(command: string, args: string[]) {
             );
           }
           console.log();
-          console.log(hint(`openfinclaw strategy-info <id>   查看详情`));
-          console.log(hint(`openfinclaw fork <id>            下载到本地`));
+          console.log(hint(`openfinclaw strategy-info <id>   View details`));
+          console.log(hint(`openfinclaw fork <id>            Fork locally`));
           console.log();
         }
         break;
@@ -340,16 +340,16 @@ export async function runCli(command: string, args: string[]) {
           if (result.summary) console.log(kv("Summary", String(result.summary)));
           if (result.backtestResult) {
             console.log();
-            console.log(color.gray("  回测指标"));
+            console.log(color.gray("  Backtest metrics"));
             const br = result.backtestResult;
             if (typeof br.totalReturn === "number")
-              console.log(kv("总收益", formatPercent(br.totalReturn * 100)));
+              console.log(kv("Total return", formatPercent(br.totalReturn * 100)));
             if (typeof br.sharpe === "number")
-              console.log(kv("夏普比率", color.bold(br.sharpe.toFixed(3))));
+              console.log(kv("Sharpe ratio", color.bold(br.sharpe.toFixed(3))));
             if (typeof br.maxDrawdown === "number")
-              console.log(kv("最大回撤", formatPercent(br.maxDrawdown * 100)));
+              console.log(kv("Max drawdown", formatPercent(br.maxDrawdown * 100)));
             if (typeof br.winRate === "number")
-              console.log(kv("胜率", formatPercent(br.winRate * 100, 1)));
+              console.log(kv("Win rate", formatPercent(br.winRate * 100, 1)));
           }
           console.log();
           console.log(hint(`Hub URL: ${color.cyan(String(result.hubUrl))}`));
@@ -371,19 +371,19 @@ export async function runCli(command: string, args: string[]) {
         } else if (result.success && result.data) {
           const { localPath, forkMeta } = result.data;
           console.log();
-          console.log(success(color.bold("策略 Fork 成功")));
+          console.log(success(color.bold("Strategy forked")));
           console.log();
-          console.log(kv("源策略", `${forkMeta.sourceName}  ${color.gray(`v${forkMeta.sourceVersion}`)}`));
-          if (forkMeta.sourceAuthor) console.log(kv("作者", forkMeta.sourceAuthor));
-          console.log(kv("本地路径", color.cyan(localPath)));
-          console.log(kv("Fork 时间", color.gray(fmtTime(forkMeta.forkedAt))));
+          console.log(kv("Source", `${forkMeta.sourceName}  ${color.gray(`v${forkMeta.sourceVersion}`)}`));
+          if (forkMeta.sourceAuthor) console.log(kv("Author", forkMeta.sourceAuthor));
+          console.log(kv("Local path", color.cyan(localPath)));
+          console.log(kv("Forked at", color.gray(fmtTime(forkMeta.forkedAt))));
           console.log();
           console.log(hint(`cd ${localPath}`));
           console.log(hint(`openfinclaw validate ${localPath}`));
           console.log();
           if (result.error) console.log(warn(result.error));
         } else {
-          console.log(errorLine(result.error ?? "Fork 失败"));
+          console.log(errorLine(result.error ?? "Fork failed"));
         }
         break;
       }
@@ -394,11 +394,11 @@ export async function runCli(command: string, args: string[]) {
           printJson(result);
         } else if (result.count === 0) {
           console.log();
-          console.log(info("本地暂无策略"));
-          console.log(hint("openfinclaw fork <id>  从 Hub 下载策略"));
+          console.log(info("No local strategies yet"));
+          console.log(hint("openfinclaw fork <id>  Fork a strategy from Hub"));
           console.log();
         } else {
-          console.log(header(`本地策略  ${color.gray(`· 共 ${result.count} 个`)}`));
+          console.log(header(`Local strategies  ${color.gray(`· ${result.count} total`)}`));
           let currentDate = "";
           for (const s of result.strategies) {
             if (s.dateDir !== currentDate) {
@@ -430,9 +430,9 @@ export async function runCli(command: string, args: string[]) {
         } else {
           console.log();
           if (result.valid) {
-            console.log(success(color.bold("策略校验通过")));
+            console.log(success(color.bold("Strategy validation passed")));
           } else {
-            console.log(errorLine(color.bold("策略校验未通过")));
+            console.log(errorLine(color.bold("Strategy validation failed")));
           }
           if (result.errors?.length) {
             console.log();
@@ -464,7 +464,7 @@ export async function runCli(command: string, args: string[]) {
           if (result.details) console.log(color.gray("  " + JSON.stringify(result.details)));
         } else {
           console.log();
-          console.log(success(color.bold("发布已提交")));
+          console.log(success(color.bold("Publish submitted")));
           console.log();
           if (result.slug) console.log(kv("Slug", String(result.slug)));
           if (result.entryId) console.log(kv("Entry ID", color.gray(String(result.entryId))));
@@ -474,7 +474,7 @@ export async function runCli(command: string, args: string[]) {
           if (result.backtestTaskId)
             console.log(kv("Backtest Task", color.gray(String(result.backtestTaskId))));
           console.log();
-          console.log(hint(`openfinclaw publish-verify --submission-id <id>   查询发布/回测状态`));
+          console.log(hint(`openfinclaw publish-verify --submission-id <id>   Query publish / backtest status`));
           console.log();
         }
         break;
@@ -493,7 +493,7 @@ export async function runCli(command: string, args: string[]) {
         } else if (result.error) {
           console.log(errorLine(String(result.error)));
         } else {
-          console.log(header("发布验证"));
+          console.log(header("Publish verification"));
           if (result.slug) console.log(kv("Slug", String(result.slug)));
           if (result.version) console.log(kv("Version", String(result.version)));
           const status = String(result.backtestStatus ?? "—");
@@ -505,20 +505,20 @@ export async function runCli(command: string, args: string[]) {
                 : status === "pending" || status === "running"
                   ? color.yellow(status)
                   : color.gray(status);
-          console.log(kv("回测状态", statusColor));
+          console.log(kv("Backtest status", statusColor));
           const report = result.backtestReport as Record<string, unknown> | undefined;
           const perf = report?.performance as Record<string, unknown> | undefined;
           if (perf) {
             console.log();
-            console.log(color.gray("  回测报告摘要"));
+            console.log(color.gray("  Backtest summary"));
             if (typeof perf.totalReturn === "number")
-              console.log(kv("总收益", formatPercent(perf.totalReturn * 100)));
+              console.log(kv("Total return", formatPercent(perf.totalReturn * 100)));
             if (typeof perf.sharpe === "number")
-              console.log(kv("夏普比率", color.bold(perf.sharpe.toFixed(3))));
+              console.log(kv("Sharpe ratio", color.bold(perf.sharpe.toFixed(3))));
             if (typeof perf.maxDrawdown === "number")
-              console.log(kv("最大回撤", formatPercent(perf.maxDrawdown * 100)));
+              console.log(kv("Max drawdown", formatPercent(perf.maxDrawdown * 100)));
             if (typeof perf.winRate === "number")
-              console.log(kv("胜率", formatPercent(perf.winRate * 100, 1)));
+              console.log(kv("Win rate", formatPercent(perf.winRate * 100, 1)));
           }
           console.log();
         }
@@ -534,11 +534,11 @@ export async function runCli(command: string, args: string[]) {
         console.log(header("OpenFinClaw Doctor"));
         const apiMark = config.apiKey
           ? color.green(sym.check) + " " + color.gray(`${config.apiKey.slice(0, 8)}…`)
-          : color.red(sym.cross) + " " + color.red("未配置");
+          : color.red(sym.cross) + " " + color.red("not configured");
         console.log(kv("Hub Key", apiMark));
         const dpMark = config.deepagentApiKey
           ? color.green(sym.check) + " " + color.gray(`${config.deepagentApiKey.slice(0, 8)}…`)
-          : color.gray(sym.dot + " 未配置（deepagent 鉴权类工具将不可用）");
+          : color.gray(sym.dot + " not configured (auth-gated deepagent tools will be disabled)");
         console.log(kv("DeepAgent Key", dpMark));
         console.log(kv("Config", color.gray(getUserConfigFilePath())));
         console.log(kv("Hub URL", color.cyan(config.hubApiUrl)));
@@ -547,7 +547,7 @@ export async function runCli(command: string, args: string[]) {
           console.log(kv("DeepAgent URL", color.cyan(config.deepagentApiUrl)));
         console.log(kv("Timeout", `${config.requestTimeoutMs}ms`));
         console.log();
-        console.log(color.gray("  连通性"));
+        console.log(color.gray("  Connectivity"));
         try {
           await executeFinPrice({ symbol: "BTC/USDT" }, config);
           console.log(kv("DataHub", color.green(sym.check + " OK (BTC/USDT)")));
@@ -587,9 +587,9 @@ export async function runCli(command: string, args: string[]) {
 
       default:
         console.error(
-          errorLine(`未知命令: ${color.bold(command)}`) +
+          errorLine(`Unknown command: ${color.bold(command)}`) +
             "\n" +
-            hint(`openfinclaw --help  查看可用命令`),
+            hint(`openfinclaw --help  See available commands`),
         );
         process.exit(1);
     }
@@ -617,7 +617,7 @@ async function runDeepagentSubcommand(
   const sub = positional[0];
   if (!sub) {
     console.error(
-      errorLine("用法: openfinclaw deepagent <health|skills|research|status|threads|messages|backtests|backtest|packages|package-meta|download>"),
+      errorLine("Usage: openfinclaw deepagent <health|skills|research|status|threads|messages|backtests|backtest|packages|package-meta|download>"),
     );
     process.exit(1);
   }
@@ -655,7 +655,7 @@ async function runDeepagentSubcommand(
         console.log(errorLine((result as { error?: string }).error ?? "skills failed"));
         break;
       }
-      console.log(header(`DeepAgent Skills  ${color.gray(`· ${result.count} 个`)}`));
+      console.log(header(`DeepAgent Skills  ${color.gray(`· ${result.count} total`)}`));
       for (const s of result.skills.slice(0, limit)) {
         console.log(
           "  " +
@@ -665,7 +665,7 @@ async function runDeepagentSubcommand(
         );
       }
       if (result.count > limit)
-        console.log(color.gray(`  … ${result.count - limit} 条已省略（加 --limit=N 查看更多）`));
+        console.log(color.gray(`  … ${result.count - limit} more hidden (use --limit=N to see more)`));
       console.log();
       break;
     }
@@ -673,13 +673,13 @@ async function runDeepagentSubcommand(
     case "research": {
       const query = positional.slice(1).join(" ").trim();
       if (!query) {
-        console.error(errorLine("用法: openfinclaw deepagent research \"<query>\" [--thread-id <id>]"));
+        console.error(errorLine("Usage: openfinclaw deepagent research \"<query>\" [--thread-id <id>]"));
         process.exit(1);
       }
       if (!config.deepagentApiKey) {
         console.error(
           errorLine(
-            "DeepAgent API key 未配置。运行 `openfinclaw init` 或设置 OPENFINCLAW_DEEPAGENT_API_KEY",
+            "DeepAgent API key not configured. Run `openfinclaw init` or set OPENFINCLAW_DEEPAGENT_API_KEY.",
           ),
         );
         process.exit(1);
@@ -702,7 +702,7 @@ async function runDeepagentSubcommand(
         break;
       }
       if (action === "list" && "threads" in result) {
-        console.log(header(`DeepAgent Threads  ${color.gray(`· ${result.count} 个`)}`));
+        console.log(header(`DeepAgent Threads  ${color.gray(`· ${result.count} total`)}`));
         for (const t of result.threads as DeepAgentThread[]) {
           console.log(
             "  " +
@@ -714,7 +714,7 @@ async function runDeepagentSubcommand(
         console.log();
       } else if (action === "create" && "thread" in result && result.thread) {
         const t = result.thread;
-        console.log(success(`创建成功`));
+        console.log(success(`Thread created`));
         console.log(kv("ID", color.cyan(t.id)));
         if (t.title) console.log(kv("Title", t.title));
         console.log();
@@ -728,7 +728,7 @@ async function runDeepagentSubcommand(
         console.log(kv("Cost (USD)", String(t.total_cost_usd ?? 0)));
         console.log();
       } else if (action === "delete") {
-        console.log(success(`已删除: ${threadId}`));
+        console.log(success(`Deleted: ${threadId}`));
       }
       break;
     }
@@ -736,7 +736,7 @@ async function runDeepagentSubcommand(
     case "messages": {
       const threadId = positional[1] ?? flags["thread-id"];
       if (!threadId) {
-        console.error(errorLine("用法: openfinclaw deepagent messages <threadId> [--limit N]"));
+        console.error(errorLine("Usage: openfinclaw deepagent messages <threadId> [--limit N]"));
         process.exit(1);
       }
       const limit = flags.limit ? Number(flags.limit) : 5;
@@ -749,7 +749,7 @@ async function runDeepagentSubcommand(
         console.log(errorLine(result.error ?? "messages failed"));
         break;
       }
-      console.log(header(`Thread Messages  ${color.gray(`· ${result.count} 条`)}`));
+      console.log(header(`Thread Messages  ${color.gray(`· ${result.count} total`)}`));
       for (const m of result.messages) {
         const roleColor =
           m.role === "assistant" ? color.green : m.role === "user" ? color.cyan : color.gray;
@@ -771,7 +771,7 @@ async function runDeepagentSubcommand(
         printJson(result);
         break;
       }
-      console.log(header(`Backtests  ${color.gray(`· ${result.count} 个`)}`));
+      console.log(header(`Backtests  ${color.gray(`· ${result.count} total`)}`));
       console.log(
         "  " +
           color.gray(
@@ -804,7 +804,7 @@ async function runDeepagentSubcommand(
     case "backtest": {
       const taskId = positional[1];
       if (!taskId) {
-        console.error(errorLine("用法: openfinclaw deepagent backtest <taskId>"));
+        console.error(errorLine("Usage: openfinclaw deepagent backtest <taskId>"));
         process.exit(1);
       }
       const result = await executeDeepagentBacktestResult({ taskId }, config);
@@ -822,7 +822,7 @@ async function runDeepagentSubcommand(
         printJson(result);
         break;
       }
-      console.log(header(`策略包  ${color.gray(`· ${result.count} 个`)}`));
+      console.log(header(`Strategy packages  ${color.gray(`· ${result.count} total`)}`));
       for (const p of result.packages.slice(0, 20)) {
         console.log(
           "  " +
@@ -830,12 +830,12 @@ async function runDeepagentSubcommand(
             color.bold(padRight(truncate(p.name ?? "—", 30), 32)) +
             color.gray(padRight(p.symbol ?? "—", 12)) +
             color.gray(padRight(p.style ?? "—", 18)) +
-            color.gray(p.has_zip ? `${p.zip_size_kb ?? "?"} KB` : "无 zip"),
+            color.gray(p.has_zip ? `${p.zip_size_kb ?? "?"} KB` : "no zip"),
         );
       }
       console.log();
       console.log(
-        hint(`openfinclaw deepagent download <package_id>   下载策略 ZIP`),
+        hint(`openfinclaw deepagent download <package_id>   Download strategy ZIP`),
       );
       console.log();
       break;
@@ -844,7 +844,7 @@ async function runDeepagentSubcommand(
     case "package-meta": {
       const packageId = positional[1];
       if (!packageId) {
-        console.error(errorLine("用法: openfinclaw deepagent package-meta <packageId>"));
+        console.error(errorLine("Usage: openfinclaw deepagent package-meta <packageId>"));
         process.exit(1);
       }
       const result = await executeDeepagentPackageMeta({ packageId }, config);
@@ -855,7 +855,7 @@ async function runDeepagentSubcommand(
     case "download": {
       const packageId = positional[1];
       if (!packageId) {
-        console.error(errorLine("用法: openfinclaw deepagent download <packageId> [--target-dir <path>]"));
+        console.error(errorLine("Usage: openfinclaw deepagent download <packageId> [--target-dir <path>]"));
         process.exit(1);
       }
       const result = await executeDeepagentDownloadPackage(
@@ -870,7 +870,7 @@ async function runDeepagentSubcommand(
         console.log(errorLine(result.error ?? "download failed"));
       } else {
         console.log();
-        console.log(success("下载完成"));
+        console.log(success("Download complete"));
         console.log(kv("Package", color.cyan(result.packageId)));
         console.log(kv("Path", color.cyan(result.localPath)));
         console.log(kv("Size", `${result.sizeKb} KB`));
@@ -892,9 +892,9 @@ async function runDeepagentSubcommand(
 
     default:
       console.error(
-        errorLine(`未知的 deepagent 子命令: ${sub}`) +
+        errorLine(`Unknown deepagent subcommand: ${sub}`) +
           "\n" +
-          hint("可用: health / skills / research / threads / messages / backtests / backtest / packages / package-meta / download / status"),
+          hint("Available: health / skills / research / threads / messages / backtests / backtest / packages / package-meta / download / status"),
       );
       process.exit(1);
   }
@@ -918,12 +918,12 @@ async function streamResearch(
   if (!threadId) {
     const { status, data } = await deepagentApiRequest(config, "POST", "/threads", { body: {} });
     if (status !== 200 && status !== 201) {
-      console.error(errorLine(`创建 thread 失败: HTTP ${status}`));
+      console.error(errorLine(`Failed to create thread: HTTP ${status}`));
       process.exit(1);
     }
     threadId = (data as { id?: string }).id;
     if (!threadId) {
-      console.error(errorLine("创建 thread 失败: 响应缺少 id"));
+      console.error(errorLine("Failed to create thread: response missing id"));
       process.exit(1);
     }
   }
@@ -938,7 +938,7 @@ async function streamResearch(
   console.log(kv("Thread", color.gray(threadId)));
   console.log(kv("Query", color.bold(query)));
   console.log();
-  console.log(color.gray("───────── 开始生成 ─────────"));
+  console.log(color.gray("───────── Generating ─────────"));
 
   const resp = await fetch(url, {
     method: "POST",
@@ -953,7 +953,7 @@ async function streamResearch(
 
   if (!resp.ok || !resp.body) {
     const txt = resp.body ? await resp.text() : "";
-    console.error(errorLine(`Run 失败: HTTP ${resp.status} ${txt.slice(0, 200)}`));
+    console.error(errorLine(`Run failed: HTTP ${resp.status} ${txt.slice(0, 200)}`));
     process.exit(1);
   }
 
@@ -986,7 +986,7 @@ async function streamResearch(
     }
   }
   process.stdout.write("\n");
-  console.log(color.gray("───────── 结束 ─────────"));
+  console.log(color.gray("───────── Done ─────────"));
   if (runId) console.log(hint(`runId: ${color.gray(runId)}`));
   if (isError) process.exit(1);
 }

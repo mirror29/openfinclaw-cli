@@ -142,7 +142,7 @@ export async function startMcpServer() {
       {
         description: "Search for stock/crypto symbols by name or keyword",
         inputSchema: {
-          query: z.string().describe("Search keyword (e.g. '茅台', 'bitcoin', 'Tesla')"),
+          query: z.string().describe("Search keyword (e.g. 'apple', 'bitcoin', 'Tesla')"),
           market: z.enum(["crypto", "equity"]).optional().describe("Limit search to market type"),
         },
       },

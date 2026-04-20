@@ -40,25 +40,25 @@ function detectPackageManager(): { cmd: string; name: string } {
 export async function runUpdate() {
   const current = getCurrentVersion();
 
-  console.log(`\n  OpenFinClaw CLI 自更新\n`);
-  console.log(`  当前版本: v${current}`);
+  console.log(`\n  OpenFinClaw CLI self-update\n`);
+  console.log(`  Current: v${current}`);
 
   let latest: string;
   try {
     latest = getLatestVersion();
   } catch {
-    console.error("  ✗ 无法获取最新版本，请检查网络连接");
+    console.error("  ✗ Failed to fetch the latest version — check your network connection.");
     process.exit(1);
   }
 
-  console.log(`  最新版本: v${latest}`);
+  console.log(`  Latest : v${latest}`);
 
   if (current === latest) {
-    console.log(`\n  已经是最新版本，无需更新。\n`);
+    console.log(`\n  Already on the latest version — nothing to do.\n`);
     return;
   }
 
-  console.log(`\n  正在更新 v${current} → v${latest}...\n`);
+  console.log(`\n  Updating v${current} → v${latest}...\n`);
 
   try {
     const pm = detectPackageManager();
@@ -69,11 +69,11 @@ export async function runUpdate() {
     } else {
       execSync(`npm install -g @openfinclaw/cli@latest`, { stdio: "inherit" });
     }
-    console.log(`\n  ✓ 更新完成! v${current} → v${latest}\n`);
+    console.log(`\n  ✓ Update complete! v${current} → v${latest}\n`);
   } catch {
-    console.error(`\n  ✗ 更新失败，请手动执行:\n`);
+    console.error(`\n  ✗ Update failed — run one of these manually:\n`);
     console.error(`    npm install -g @openfinclaw/cli@latest\n`);
-    console.error(`  或\n`);
+    console.error(`  or\n`);
     console.error(`    pnpm add -g @openfinclaw/cli@latest\n`);
     process.exit(1);
   }
