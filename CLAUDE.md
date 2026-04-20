@@ -36,7 +36,8 @@
   - Hub key: `--api-key` (CLI) → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json#apiKey`
   - DeepAgent key: `--deepagent-api-key` → `OPENFINCLAW_DEEPAGENT_API_KEY` / `FINDOO_DEEPAGENT_API_KEY` → `~/.openfinclaw/config.json#deepagentApiKey`
   - Override config file path with `OPENFINCLAW_CONFIG_PATH`。
-- **Independent auth surfaces**: Hub 和 DeepAgent 服务端是两套鉴权系统。不要假设一把 Key 两处通用；任何 DeepAgent API 调用必须走 `deepagentApiRequest()` 并用 `X-API-Key`。
+  - `resolveOpenFinClawConfig({ allowMissingApiKey: true })` returns a config with `apiKey: ""` instead of throwing — used by CLI `deepagent` / `doctor` paths so users with **only** a DeepAgent key don't get blocked at config resolution. Callers must still verify `config.apiKey` before hitting Hub / DataHub.
+- **Independent auth surfaces**: Hub 和 DeepAgent 服务端是两套鉴权系统。不要假设一把 Key 两处通用；任何 DeepAgent API 调用必须走 `deepagentApiRequest()` 并用 `X-API-Key`。`openfinclaw deepagent *` 子命令与 `openfinclaw doctor` 不强制要求 Hub key；新增面向 DeepAgent 的子命令时沿用 `allowMissingApiKey` 模式。
 - **Long-running LLM tools**: 远端 Agent 类长耗时操作采用 submit/poll/finalize 三段式（cross-platform-safe，见 `deepagent/tools.ts` 的 `research_submit` / `research_poll` / `research_finalize`）。**不要**试图在单次 MCP tool call 内阻塞等待 LLM 全部完成 —— MCP 客户端会超时或缓冲。
 - **CLI ≠ MCP for streaming**: 终端命令（如 `deepagent research`）可以直接消费 SSE 流做真正 token-by-token 渲染（`process.stdout.write`）；MCP 路径则必须回落到 submit/poll。
 

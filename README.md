@@ -27,6 +27,7 @@ OpenFinClaw is a **universal financial toolkit** that works with any AI agent pl
 |----------|-------|-------------|
 | **Market Data** | `fin_price` `fin_kline` `fin_crypto` `fin_compare` `fin_slim_search` | Real-time prices, OHLCV candlesticks, crypto/DeFi data, multi-asset comparison, symbol search |
 | **Strategy Management** | `skill_publish` `skill_validate` `skill_fork` `skill_leaderboard` `skill_get_info` `skill_list_local` `skill_publish_verify` | Publish strategies to Hub, validate FEP v2.0 packages, fork public strategies, query leaderboards |
+| **DeepAgent** | `fin_deepagent_research_*` `fin_deepagent_backtests` `fin_deepagent_packages` `fin_deepagent_download_package` … | Remote AI research / backtest / strategy generation (separate DeepAgent key) |
 
 ---
 
@@ -93,6 +94,25 @@ npx @openfinclaw/cli search "tesla"
 # Diagnose configuration
 npx @openfinclaw/cli doctor
 ```
+
+### 4. DeepAgent (Optional — remote AI research & strategy generation)
+
+DeepAgent is a **separate service with its own API key** (`OPENFINCLAW_DEEPAGENT_API_KEY`). You do **not** need a Hub key to use `deepagent *` or `doctor`:
+
+```bash
+# Save the key (or pass it inline with --deepagent-api-key)
+export OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>
+
+# Streaming research in the terminal (token-by-token)
+npx @openfinclaw/cli deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
+
+# Inspect past runs
+npx @openfinclaw/cli deepagent backtests
+npx @openfinclaw/cli deepagent packages
+npx @openfinclaw/cli deepagent download <packageId>
+```
+
+`openfinclaw init` can save both keys at once (Hub + DeepAgent) to `~/.openfinclaw/config.json`. Request a DeepAgent key via the Hub dashboard.
 
 ---
 
@@ -213,6 +233,7 @@ npx @openfinclaw/cli serve
 |-------|-------|--------|
 | `datahub` | fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search | ~700 |
 | `strategy` | skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify | ~1,000 |
+| `deepagent` | fin_deepagent_health / _skills / _research_submit / _research_poll / _research_finalize / _status / _cancel / _threads / _messages / _backtests / _backtest_result / _packages / _package_meta / _download_package | ~1,400 |
 
 ---
 
@@ -247,13 +268,16 @@ The project is a monorepo with two packages:
 
 | Variable | Required | Description | Default |
 |----------|----------|-------------|---------|
-| `OPENFINCLAW_API_KEY` | One of key sources | API key for Hub and DataHub (`fch_` prefix). Ignored if `--api-key` is set; otherwise falls back to `~/.openfinclaw/config.json` after init. | — |
-| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "..." }` (tests / custom layout) | `~/.openfinclaw/config.json` |
+| `OPENFINCLAW_API_KEY` | For Hub / DataHub tools | API key for Hub and DataHub (`fch_` prefix). Falls back to `~/.openfinclaw/config.json` after init. Not needed to run `deepagent *` or `doctor`. | — |
+| `OPENFINCLAW_DEEPAGENT_API_KEY` | For DeepAgent tools | Separate API key for the DeepAgent service (distinct from the Hub `fch_` key; sent as `X-API-Key`). | — |
+| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "...", "deepagentApiKey": "..." }` (tests / custom layout) | `~/.openfinclaw/config.json` |
 | `HUB_API_URL` | No | Hub API URL | `https://hub.openfinclaw.ai` |
 | `DATAHUB_GATEWAY_URL` | No | DataHub Gateway URL | `https://datahub.openfinclaw.ai` |
+| `DEEPAGENT_API_URL` | No | DeepAgent API URL | `https://api.openfinclaw.ai/agent` |
 | `REQUEST_TIMEOUT_MS` | No | HTTP request timeout (ms) | `60000` |
+| `DEEPAGENT_SSE_TIMEOUT_MS` | No | DeepAgent SSE stream timeout (ms) | `900000` |
 
-Get your API key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai).
+Get your Hub API key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai). The **Hub key and the DeepAgent key are independent** — having one does not grant access to the other.
 
 ---
 

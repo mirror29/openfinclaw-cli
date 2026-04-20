@@ -123,9 +123,15 @@ export async function runCli(command: string, args: string[]) {
   const outputJson = flags.output === "json";
   const apiKeyOpt = flags["api-key"];
 
+  /**
+   * DeepAgent is a separately-authenticated service (its own X-API-Key).
+   * `doctor` needs to inspect both keys. Both must work without a Hub key.
+   */
+  const allowMissingApiKey = command === "deepagent" || command === "doctor";
+
   let config;
   try {
-    config = resolveOpenFinClawConfig({ apiKey: apiKeyOpt });
+    config = resolveOpenFinClawConfig({ apiKey: apiKeyOpt, allowMissingApiKey });
   } catch (err) {
     console.error(errorLine(err instanceof Error ? err.message : String(err)));
     process.exit(1);
@@ -548,18 +554,24 @@ export async function runCli(command: string, args: string[]) {
         console.log(kv("Timeout", `${config.requestTimeoutMs}ms`));
         console.log();
         console.log(color.gray("  Connectivity"));
-        try {
-          await executeFinPrice({ symbol: "BTC/USDT" }, config);
-          console.log(kv("DataHub", color.green(sym.check + " OK (BTC/USDT)")));
-        } catch (err) {
+        if (!config.apiKey) {
           console.log(
-            kv(
-              "DataHub",
-              color.red(
-                `${sym.cross} FAIL · ${err instanceof Error ? err.message : String(err)}`,
-              ),
-            ),
+            kv("DataHub", color.gray(sym.dot + " skipped (Hub key not configured)")),
           );
+        } else {
+          try {
+            await executeFinPrice({ symbol: "BTC/USDT" }, config);
+            console.log(kv("DataHub", color.green(sym.check + " OK (BTC/USDT)")));
+          } catch (err) {
+            console.log(
+              kv(
+                "DataHub",
+                color.red(
+                  `${sym.cross} FAIL · ${err instanceof Error ? err.message : String(err)}`,
+                ),
+              ),
+            );
+          }
         }
         try {
           const h = await executeDeepagentHealth({}, config);

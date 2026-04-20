@@ -40,12 +40,22 @@ npx @openfinclaw/cli init
 ```
 
 The wizard will:
-- Ask for your **Hub API Key** (`fch_...`, required)
+- Ask for your **Hub API Key** (`fch_...`, required for Hub / DataHub tools)
 - Optionally ask for your **DeepAgent API Key** (only if you enable the `deepagent` tool group)
 - Let you pick tool groups
 - Auto-detect installed platforms (by app bundles, user data dirs, CLI on `PATH`, or existing MCP config)
 - Write MCP config to each selected platform
 - Save keys to `~/.openfinclaw/config.json` (chmod 600 on Unix) so the terminal CLI works without `export`
+
+`init` also supports scripted, non-interactive use (useful on Windows / CI where raw-mode prompts don't work):
+
+```bash
+npx @openfinclaw/cli init --yes \
+    --platforms cursor,claude-code \
+    --tool-groups datahub,deepagent \
+    --api-key fch_xxx \
+    --deepagent-api-key <your-deepagent-key>
+```
 
 ### 2. Manual MCP configuration
 
@@ -86,14 +96,19 @@ npx @openfinclaw/cli validate ./my-strategy
 npx @openfinclaw/cli publish ./my-strategy.zip
 
 # DeepAgent — real token-by-token streaming in terminal
-npx @openfinclaw/cli deepagent research "Analyze BTC trend over last 30 days"
+# Only requires OPENFINCLAW_DEEPAGENT_API_KEY (NOT the Hub fch_ key)
+npx @openfinclaw/cli deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
 npx @openfinclaw/cli deepagent skills
 npx @openfinclaw/cli deepagent packages
 npx @openfinclaw/cli deepagent download <package_id>
 
-# Diagnostics
+# Diagnostics (works with any subset of keys)
 npx @openfinclaw/cli doctor
 ```
+
+> **Hub key vs DeepAgent key.** The two services authenticate independently.
+> `deepagent *` and `doctor` run fine with **only** a DeepAgent key configured;
+> `price`, `kline`, `leaderboard`, `publish`, etc. need the Hub `fch_` key.
 
 ---
 
@@ -197,8 +212,10 @@ mcp_servers:
 
 | Key | Env var | Used by |
 |---|---|---|
-| Hub / DataHub (`fch_...`) | `OPENFINCLAW_API_KEY` | datahub + strategy groups |
-| DeepAgent | `OPENFINCLAW_DEEPAGENT_API_KEY` | deepagent group only (optional) |
+| Hub / DataHub (`fch_...`) | `OPENFINCLAW_API_KEY` | `datahub` + `strategy` groups (and their CLI equivalents: `price`, `kline`, `leaderboard`, `publish`, …) |
+| DeepAgent | `OPENFINCLAW_DEEPAGENT_API_KEY` | `deepagent` group + CLI `deepagent *` subcommands (independent from the Hub key) |
+
+Either key is optional on its own — the CLI lets you run the subcommands that match whichever keys you have. `doctor` skips the Hub connectivity check when no Hub key is present.
 
 Resolution order for each key (highest first):
 

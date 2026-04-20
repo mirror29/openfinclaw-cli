@@ -53,6 +53,16 @@ export interface ResolveOpenFinClawConfigOptions {
    * Explicit DeepAgent API key (e.g. CLI `--deepagent-api-key`). Highest priority.
    */
   deepagentApiKey?: string;
+  /**
+   * When true, return a config with `apiKey: ""` instead of throwing if no
+   * Hub key can be resolved. Used by paths that only talk to DeepAgent (a
+   * separately-authenticated service with its own key), so a user who set
+   * only `OPENFINCLAW_DEEPAGENT_API_KEY` can still run `deepagent *` and
+   * `doctor` commands.
+   *
+   * Callers must still check `config.apiKey` before hitting Hub/DataHub.
+   */
+  allowMissingApiKey?: boolean;
 }
 
 /**
@@ -176,6 +186,10 @@ export function resolveOpenFinClawConfig(options: ResolveOpenFinClawConfigOption
   const fromFile = readApiKeyFromConfigFile(getUserConfigFilePath());
   if (fromFile) {
     return buildConfigFromApiKey(fromFile, options);
+  }
+
+  if (options.allowMissingApiKey) {
+    return buildConfigFromApiKey("", options);
   }
 
   throw new Error(
