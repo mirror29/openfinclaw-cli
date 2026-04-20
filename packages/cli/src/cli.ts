@@ -303,9 +303,10 @@ export async function runCli(command: string, args: string[]) {
               ),
           );
           for (const s of result.strategies) {
-            const ret = s.performance?.returnSincePublish;
+            // Hub returns returnSincePublish already scaled as a percent
+            // (e.g. 18.63 = 18.63%). Do NOT multiply by 100.
+            const retPct = s.performance?.returnSincePublish ?? null;
             const sharpe = s.performance?.sharpeRatio;
-            const retPct = ret != null ? ret * 100 : null;
             const rankStr = `#${s.rank}`;
             console.log(
               "  " +
