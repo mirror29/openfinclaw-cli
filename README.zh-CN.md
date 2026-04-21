@@ -4,36 +4,64 @@
 
 <img src="imgs/logo.svg" alt="OpenFinClaw" width="680">
 
-**一站式量化交易金融 Agent — 给 Claude Code / Cursor / 20+ AI Agent 插上量化大脑，基于 MCP**
+### 一个 Prompt，一支量化研究团队。
 
-行情获取 · 数据分析 · 深度报告 · 策略生成 · 回测 · 模拟盘 —— 全部交给同一个 DeepAgent。
+研究 · 策略 · 回测 · 模拟盘 —— 在 Claude Code / Cursor 等 20+ AI Agent 里，用一句话跑完整套量化工作流。
 
 [![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![npm downloads](https://img.shields.io/npm/dw/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![MCP compatible](https://img.shields.io/badge/MCP-compatible-8A2BE2)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[在线体验 DeepAgent](https://hub.openfinclaw.ai/en/chat) · [获取 API Key](https://hub.openfinclaw.ai) · [快速开始](#快速开始) · [支持的平台](#支持的平台)
+### 🚀 [60 秒看到效果，零安装试用](https://hub.openfinclaw.ai/en/chat)
+
+浏览器里直接跑一轮完整的 研究 → 策略 → 回测 循环。不装、不需要 API Key、真实行情。
+
+[快速开始](#快速开始) · [即用 Prompt 示例](#即用-prompt-示例) · [社区飞轮](#社区排行榜--fork--发布) · [支持的平台](#支持的平台)
 
 </div>
 
-> 🧪 **想先尝鲜？** 直接在浏览器里体验 DeepAgent 完整量化工作流（研究 · 策略 · 回测 · 模拟盘）：<https://hub.openfinclaw.ai/en/chat> —— 无需本地安装。
-
 ---
 
-## 简介
+## 你能得到什么
 
-OpenFinClaw 通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 把一个**一站式量化交易 Agent** 接入任意 AI 编程助手。核心是 **DeepAgent**：一个远端多 Agent 服务，能够用一句自然语言 Prompt 完成从行情获取、数据分析、深度报告、策略生成、回测到模拟盘建议的全流程。可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台直接调用。
+| | |
+|---|---|
+| 🧠 **DeepAgent 分析技能** | **60+** 项内置 —— 技术面 · 基本面 · 情绪面 · 风险 · 择时 · 因子 |
+| 🌍 **覆盖市场** | **5 大** —— 美股 · A 股 · 港股 · 加密 · 外汇 |
+| 🤖 **支持平台** | **20+** AI 平台 —— Claude Code · Cursor · VS Code · Hermes · Windsurf · Codex … |
+| 🔄 **全流程闭环** | 研究 → 策略生成 → 回测 → 模拟盘 → 发布到社区排行榜 |
+| ⚡ **交互方式** | 终端 token-by-token 流式输出 · MCP 工具调用 · 浏览器在线 Playground |
 
 <p align="center">
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent 回测结果 — 特斯拉布林带" width="620">
   <br/>
-  <sub><em><code>openfinclaw deepagent research</code> 真实输出——特斯拉布林带策略，研究 → 回测 → 绩效指标，一句 Prompt 完成。</em></sub>
+  <sub><em><code>openfinclaw deepagent research</code> 真实输出——一句 Prompt：研究 → 策略 → 回测 → 绩效指标。</em></sub>
 </p>
 
-### 功能一览
+---
 
-| 分类 | 工具 | 说明 |
-|------|------|------|
-| **DeepAgent**（一站式量化 Agent） | `fin_deepagent_research_*` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` · `_threads` · `_messages` · `_health` · `_skills` · `_status` · `_cancel` | 金融相关问题一站问到底：行情、分析、深度报告、策略生成、回测、模拟盘建议，一个 Agent 全包。 |
-| **策略管理**（进阶本地 FEP v2.0 工作流） | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | 面向策略作者：发布到 Hub、校验 FEP v2.0 包、Fork 公开策略、查看排行榜。 |
+## 即用 Prompt 示例
+
+把下面任意一条粘进 `openfinclaw deepagent research "…"`（或直接丢给你的 AI Agent），每条都会跑一轮完整的 研究 → 策略 → 回测 循环。
+
+**📈 技术分析**
+- `扫描 NVDA 近 6 个月的 RSI 背离信号，并做历史回测。`
+- `对比 TSLA 和 AAPL 上过去 1 年的布林带策略，哪个更强？`
+- `筛选本月出现金叉信号的标普 500 成分股。`
+
+**📊 基本面 & 宏观**
+- `拉 Apple 近 8 个季度的营收、毛利和业绩指引，总结趋势。`
+- `这一季 NVDA 上涨是由业绩、指引还是叙事驱动？`
+- `从成长性、利润率、估值三个维度对比 AMD / INTC / NVDA。`
+
+**🎯 策略生成**
+- `基于美股大市值科技股做一个动量策略，回测 2 年，告诉我它在什么场景会失效。`
+- `写一个 BTC 的均值回归策略，展示它在 2022 全年的回撤行为。`
+- `A 股沪深 300 日内轮动策略，年化目标 15%，最大回撤 < 10%。`
+
+**🧪 回测 & 压力测试**
+- `用 50/200 SMA 金叉策略回测 SPY 从 2015 年起，考虑手续费和滑点。`
+- `把我 Fork 的那个策略用 2020、2022 两次暴跌做压力测试。`
+
+> 想直接拿一个现成的？运行 `openfinclaw leaderboard` 浏览社区排名前列的策略，然后 `fork` 任意一个开跑。
 
 ---
 
@@ -159,6 +187,24 @@ openfinclaw deepagent research "帮我写一个特斯拉布林带策略并跑回
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent — 策略定义与绩效指标" width="49%" />
   <img src="imgs/deepagent-backtest-trades.png" alt="DeepAgent — 交易明细、结论与优化建议" width="49%" />
 </p>
+
+---
+
+## 社区：排行榜 → Fork → 发布
+
+OpenFinClaw 内置一个社区策略交易所。看看别人在跑什么、一键拷到本地、改吧改吧再发回去 —— 可以理解成「量化版的 Hugging Face」。
+
+```bash
+openfinclaw leaderboard --limit 20          # 浏览榜单前列的策略
+openfinclaw strategy-info <id>              # 查看某策略的表现详情
+openfinclaw fork <id>                       # 复制到 ./strategies/<slug>
+# ... 改 strategy.py，调 fep.yaml ...
+openfinclaw validate ./strategies/<slug>    # FEP v2.0 预检
+openfinclaw publish ./my-strategy.zip       # 发回到社区排行榜
+openfinclaw publish-verify --submission-id <id>   # 跟踪回测进度
+```
+
+每一个发布的策略都会在服务端回测，并按等效真实市场收益排名 —— 没有自报成绩，只有结果说话。
 
 ---
 

@@ -57,6 +57,9 @@ if (!command || command === "serve") {
 } else if (command === "update") {
   const { runUpdate } = await import("./update.js");
   await runUpdate();
+} else if (command === "examples") {
+  const { runExamples } = await import("./examples.js");
+  runExamples(process.argv.slice(3));
 } else if (command === "--help" || command === "-h") {
   printHelp();
 } else if (command === "--version" || command === "-v") {
@@ -91,8 +94,8 @@ function printHelp() {
   const lines = [
     "",
     `  ${color.boldGreen("OpenFinClaw")}  ${dim(`v${getVersion()}`)}`,
-    `  ${dim("One-stop quant-trading AI agent · MCP Server + CLI")}`,
-    `  ${dim("Market data · analysis · deep reports · strategy generation · backtest · paper trading — all via DeepAgent")}`,
+    `  ${dim("Your quant research team, in one prompt.")}`,
+    `  ${dim("Research · strategy · backtest · paper trade — inside Claude Code, Cursor, and 20+ AI agents.")}`,
     ...(installBanner ?? []),
     "",
     `  ${h("Usage")}`,
@@ -120,6 +123,7 @@ function printHelp() {
     `  ${h("System")}`,
     `    ${cmd("init")}                                     Interactive setup wizard`,
     `    ${cmd("update")}                                   Upgrade to the latest version`,
+    `    ${cmd("examples")} ${dim("[category]")}                     Show 10+ ready-to-run prompts`,
     `    ${cmd("serve")} ${dim("[--tools=strategy,deepagent]")}       Start the MCP Server`,
     `    ${cmd("doctor")}                                  Diagnose config & connectivity`,
     "",

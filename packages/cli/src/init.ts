@@ -874,9 +874,10 @@ export async function runInit(argv: string[] = []): Promise<void> {
       `  ${cyan('"Research NVDA last 90 days, generate a momentum strategy, backtest 1y, then give me a paper-trade plan"')}`,
       "",
       `${bold("In the terminal")} ${dim("→")} e.g.`,
-      `  ${cyan(`${terminalPrefix} deepagent research "…"`)}`,
-      `  ${cyan(`${terminalPrefix} deepagent health`)}`,
-      `  ${cyan(`${terminalPrefix} doctor`)}`,
+      `  ${cyan(`${terminalPrefix} deepagent health`)}   ${dim("# seconds — sanity-check the service")}`,
+      `  ${cyan(`${terminalPrefix} examples`)}           ${dim("# 10+ ready-to-run prompts")}`,
+      `  ${cyan(`${terminalPrefix} deepagent research "…"`)}   ${dim("# streaming research/strategy/backtest")}`,
+      `  ${cyan(`${terminalPrefix} doctor`)}             ${dim("# diagnose config & connectivity")}`,
     ];
     if (installHint) outroLines.push("", installHint);
     outroLines.push(
@@ -894,9 +895,10 @@ export async function runInit(argv: string[] = []): Promise<void> {
     console.log(`    ${cyan('"Research NVDA last 90 days, generate a momentum strategy, backtest 1y, then give me a paper-trade plan"')}`);
     console.log();
     console.log(`  ${bold("In the terminal")} ${dim("→")} e.g.`);
-    console.log(`    ${cyan(`${terminalPrefix} deepagent research "…"`)}`);
-    console.log(`    ${cyan(`${terminalPrefix} deepagent health`)}`);
-    console.log(`    ${cyan(`${terminalPrefix} doctor`)}`);
+    console.log(`    ${cyan(`${terminalPrefix} deepagent health`)}   ${dim("# seconds — sanity-check the service")}`);
+    console.log(`    ${cyan(`${terminalPrefix} examples`)}           ${dim("# 10+ ready-to-run prompts")}`);
+    console.log(`    ${cyan(`${terminalPrefix} deepagent research "…"`)}   ${dim("# streaming research/strategy/backtest")}`);
+    console.log(`    ${cyan(`${terminalPrefix} doctor`)}             ${dim("# diagnose config & connectivity")}`);
     if (installHint) {
       console.log();
       console.log(`  ${installHint}`);

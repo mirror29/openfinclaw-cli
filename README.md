@@ -4,36 +4,64 @@
 
 <img src="imgs/logo.svg" alt="OpenFinClaw" width="680">
 
-**One-stop quant-trading AI agent for Claude Code, Cursor & 20+ AI agents — via MCP**
+### Your quant research team, in one prompt.
 
-Market data · analysis · deep reports · strategy generation · backtest · paper trading — everything through a single DeepAgent.
+Research · strategy · backtest · paper trade — ship a complete quant workflow from a single natural-language prompt, inside Claude Code, Cursor, and 20+ AI agents.
 
 [![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![npm downloads](https://img.shields.io/npm/dw/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![MCP compatible](https://img.shields.io/badge/MCP-compatible-8A2BE2)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[Try DeepAgent online](https://hub.openfinclaw.ai/en/chat) · [Get API Key](https://hub.openfinclaw.ai) · [Quick Start](#quick-start) · [Platforms](#supported-platforms)
+### 🚀 [Try it in 60 seconds — zero install](https://hub.openfinclaw.ai/en/chat)
+
+Run a full research → strategy → backtest loop in your browser. No install, no API key, real market data.
+
+[Quick Start](#quick-start) · [Example Prompts](#example-prompts) · [Community](#community-leaderboard--fork--publish) · [Platforms](#supported-platforms)
 
 </div>
 
-> 🧪 **Try DeepAgent online first → <https://hub.openfinclaw.ai/en/chat>** — browse the full quant workflow (research · strategy · backtest · paper trade) in your browser, no install required.
-
 ---
 
-## What is OpenFinClaw?
+## What you get
 
-OpenFinClaw plugs a **one-stop quant-trading agent** into any AI coding assistant via [MCP (Model Context Protocol)](https://modelcontextprotocol.io). At its core is **DeepAgent** — a remote multi-agent service that handles market data fetching, analysis, deep reports, strategy generation, backtesting and paper trading from a single natural-language prompt. Reach it from Claude Code, Hermes, Cursor, VS Code Copilot, and 20+ other platforms.
+| | |
+|---|---|
+| 🧠 **DeepAgent analysis skills** | **60+** built-in — technical · fundamental · sentiment · risk · timing · factor |
+| 🌍 **Markets covered** | **5** — US equities · A-shares · HK · Crypto · Forex |
+| 🤖 **Works with** | **20+** AI platforms — Claude Code · Cursor · VS Code · Hermes · Windsurf · Codex … |
+| 🔄 **End-to-end flow** | research → strategy → backtest → paper trade → publish to the leaderboard |
+| ⚡ **How you interact** | streaming token-by-token in the terminal · MCP tool calls · in-browser playground |
 
 <p align="center">
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent backtest result — Tesla Bollinger Bands" width="620">
   <br/>
-  <sub><em>Live output from <code>openfinclaw deepagent research</code> — Tesla Bollinger-Bands strategy, research → backtest → metrics, from one prompt.</em></sub>
+  <sub><em>Live output from <code>openfinclaw deepagent research</code> — one prompt: research → strategy → backtest → metrics.</em></sub>
 </p>
 
-### Key Features
+---
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **DeepAgent** (one-stop quant agent) | `fin_deepagent_research_*` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` · `_threads` · `_messages` · `_health` · `_skills` · `_status` · `_cancel` | Ask anything finance-related — market data, analysis, deep reports, strategy generation, backtests, paper-trade suggestions. One agent end-to-end. |
-| **Strategy** (advanced local FEP v2.0 workflow) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | For strategy authors: publish to Hub, validate FEP v2.0 packages, fork public strategies, query leaderboards. |
+## Example Prompts
+
+Copy-paste any of these into `openfinclaw deepagent research "…"` (or drop them straight into your AI agent). Each one runs the full research → strategy → backtest loop.
+
+**📈 Technical analysis**
+- `Find RSI divergence signals on NVDA in the last 6 months, then backtest them.`
+- `Compare a Bollinger Bands strategy on TSLA vs AAPL over 1 year — which wins?`
+- `Screen the S&P 500 for golden-cross signals this month.`
+
+**📊 Fundamentals & macro**
+- `Pull Apple's last 8 quarters of revenue, margins, and guidance. Summarize the trend.`
+- `What's driving the NVDA move this quarter — earnings, guidance, or narrative?`
+- `Compare AMD / INTC / NVDA on growth, margin, and valuation.`
+
+**🎯 Strategy generation**
+- `Design a momentum strategy on US mega-cap tech. Backtest 2y. Tell me where it breaks.`
+- `Write a mean-reversion strategy on BTC and show drawdown behavior through 2022.`
+- `A-shares 沪深 300 日内轮动策略，年化目标 15%，最大回撤 < 10%。`
+
+**🧪 Backtest & stress-test**
+- `Backtest a 50/200 SMA crossover on SPY from 2015. Include costs and slippage.`
+- `Stress-test my forked strategy against the 2020 and 2022 crashes.`
+
+> Want a ready-made one? Run `openfinclaw leaderboard` to browse the community's highest-ranked strategies, then `fork` any of them.
 
 ---
 
@@ -159,6 +187,24 @@ openfinclaw deepagent research "Write me a Tesla Bollinger Bands strategy and ru
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent — strategy definition & performance metrics" width="49%" />
   <img src="imgs/deepagent-backtest-trades.png" alt="DeepAgent — trades, conclusions & optimization suggestions" width="49%" />
 </p>
+
+---
+
+## Community: leaderboard → fork → publish
+
+OpenFinClaw ships with a community strategy exchange. Browse what others are running, copy any strategy locally, tweak it, and publish back — think of it as a Hugging Face for quant strategies.
+
+```bash
+openfinclaw leaderboard --limit 20          # Browse top-ranked strategies
+openfinclaw strategy-info <id>              # See how a strategy performs
+openfinclaw fork <id>                       # Copy to ./strategies/<slug>
+# ... edit strategy.py, tweak fep.yaml ...
+openfinclaw validate ./strategies/<slug>    # Pre-flight FEP v2.0 check
+openfinclaw publish ./my-strategy.zip       # Ship to the leaderboard
+openfinclaw publish-verify --submission-id <id>   # Track backtest progress
+```
+
+Every published strategy is backtested server-side and ranked by live-market-equivalent returns — no self-reported numbers.
 
 ---
 
