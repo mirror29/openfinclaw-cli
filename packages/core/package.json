@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Core logic for OpenFinClaw — DeepAgent client, strategy tools & shared types",
   "license": "MIT",
   "type": "module",

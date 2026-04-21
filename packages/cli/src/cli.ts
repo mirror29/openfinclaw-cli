@@ -32,6 +32,7 @@ import {
   kv,
   success,
   error as errorLine,
+  failure,
   warn,
   info,
   hint,
@@ -83,11 +84,18 @@ function printJson(data: unknown): void {
 }
 
 /**
- * Print a usage error line and exit(1).
- * @param msg - Usage message
+ * Print a three-line usage error and exit(1). The `msg` param is the
+ * canonical one-line usage string — it becomes the "Fix" row.
+ * @param msg - Usage message (what the user should have typed)
  */
 function usageExit(msg: string): never {
-  console.error(errorLine(`Usage: ${msg}`));
+  console.error(
+    failure({
+      what: "Invalid usage",
+      why: "required argument missing or malformed",
+      fix: msg,
+    }),
+  );
   process.exit(1);
 }
 
@@ -131,7 +139,25 @@ export async function runCli(command: string, args: string[]) {
   try {
     config = resolveOpenFinClawConfig({ apiKey: apiKeyOpt, allowMissingApiKey });
   } catch (err) {
-    console.error(errorLine(err instanceof Error ? err.message : String(err)));
+    const raw = err instanceof Error ? err.message : String(err);
+    const looksLikeMissingKey = /api[_\s-]?key|missing|not (set|configured|provided)/i.test(raw);
+    if (looksLikeMissingKey) {
+      console.error(
+        failure({
+          what: "API key not configured",
+          why: raw,
+          fix: "Run `openfinclaw init` to save keys, or export OPENFINCLAW_API_KEY / OPENFINCLAW_DEEPAGENT_API_KEY",
+        }),
+      );
+    } else {
+      console.error(
+        failure({
+          what: "Config resolution failed",
+          why: raw,
+          fix: "Check ~/.openfinclaw/config.json is valid JSON, or re-run `openfinclaw init`",
+        }),
+      );
+    }
     process.exit(1);
   }
 
@@ -444,9 +470,11 @@ export async function runCli(command: string, args: string[]) {
 
       default:
         console.error(
-          errorLine(`Unknown command: ${color.bold(command)}`) +
-            "\n" +
-            hint(`openfinclaw --help  See available commands`),
+          failure({
+            what: `Unknown command: ${command}`,
+            why: "not a recognized subcommand",
+            fix: "Run `openfinclaw --help` to list commands, or `openfinclaw examples` for ready-to-run prompts",
+          }),
         );
         process.exit(1);
     }

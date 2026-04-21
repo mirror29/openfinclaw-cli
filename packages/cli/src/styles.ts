@@ -221,3 +221,20 @@ export function info(msg: string): string {
 export function hint(msg: string): string {
   return `  ${color.gray(sym.bullet + " " + msg)}`;
 }
+
+/**
+ * Three-line "Problem → Why → Fix" error block.
+ * Use for errors where the user needs guidance to self-recover (bad config,
+ * missing key, unknown command). For one-line reporting stay with `error()`.
+ * @param parts.what - Short, bold problem statement (< 60 chars)
+ * @param parts.why - Why it happened — often the upstream error message
+ * @param parts.fix - The concrete action the user should take next
+ */
+export function failure(parts: { what: string; why: string; fix: string }): string {
+  const lines = [
+    `  ${color.red(sym.cross)} ${color.bold(parts.what)}`,
+    `      ${color.gray("Why:")} ${color.gray(parts.why)}`,
+    `      ${color.gray("Fix:")} ${color.cyan(parts.fix)}`,
+  ];
+  return lines.join("\n");
+}

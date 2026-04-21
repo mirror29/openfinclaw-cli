@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "One-stop quant-trading AI agent for any coding assistant — MCP server + CLI",
   "license": "MIT",
   "type": "module",

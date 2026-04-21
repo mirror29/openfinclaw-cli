@@ -14,7 +14,7 @@ Research · strategy · backtest · paper trade — ship a complete quant workfl
 
 Run a full research → strategy → backtest loop in your browser. No install, no API key, real market data.
 
-[Quick Start](#quick-start) · [Example Prompts](#example-prompts) · [Community](#community-leaderboard--fork--publish) · [Platforms](#supported-platforms)
+[Quick Start](#quick-start) · [Example Prompts](#example-prompts) · [Community](#community-leaderboard--fork--publish) · [Platforms](#supported-platforms) · [vs. other tools](COMPARISON.md)
 
 </div>
 
