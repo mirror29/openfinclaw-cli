@@ -1,11 +1,13 @@
 # @openfinclaw/core
 
-**Platform-independent financial tools core** — API clients, type definitions, and tool schemas for OpenFinClaw. Zero framework dependencies.
+**Core logic for OpenFinClaw** — DeepAgent client, strategy tools & shared types. Zero framework dependencies.
 
 [![npm](https://img.shields.io/npm/v/@openfinclaw/core)](https://www.npmjs.com/package/@openfinclaw/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mirror29/openfinclaw-cli/blob/main/LICENSE)
 
-This is the **library core** used by [`@openfinclaw/cli`](https://www.npmjs.com/package/@openfinclaw/cli) (the MCP Server + CLI). Install this directly only if you are building your own MCP wrapper, custom agent integration, or calling the OpenFinClaw Hub / DataHub / DeepAgent APIs from code.
+This is the **library core** used by [`@openfinclaw/cli`](https://www.npmjs.com/package/@openfinclaw/cli) (the MCP Server + CLI). Install this directly only if you are building your own MCP wrapper, custom agent integration, or calling the OpenFinClaw DeepAgent / Hub APIs from code.
+
+> 🧪 **Try DeepAgent online first** → <https://hub.openfinclaw.ai/en/chat> — no install required.
 
 👉 **For most users, install [`@openfinclaw/cli`](https://www.npmjs.com/package/@openfinclaw/cli) instead.**
 
@@ -25,25 +27,32 @@ Node 18+ (ESM only). TypeScript types are bundled.
 
 ## What's inside
 
-Three independent tool groups, all exported as **pure functions + JSON schemas**. Bring your own MCP SDK / agent framework.
+Two independent tool groups, all exported as **pure functions + JSON schemas**. Bring your own MCP SDK / agent framework.
 
 | Group | Tools | Auth |
 |---|---|---|
-| **DataHub** (market data) | `fin_price` · `fin_kline` · `fin_crypto` · `fin_compare` · `fin_slim_search` | Hub Bearer token |
-| **Strategy** (Hub management) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | Hub Bearer token |
-| **DeepAgent** (remote AI agent) | `fin_deepagent_health` · `_skills` · `_threads` · `_messages` · `_research_submit` · `_research_poll` · `_research_finalize` · `_status` · `_cancel` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` | DeepAgent `X-API-Key` |
+| **DeepAgent** (one-stop quant agent) | `fin_deepagent_health` · `_skills` · `_threads` · `_messages` · `_research_submit` · `_research_poll` · `_research_finalize` · `_status` · `_cancel` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` | DeepAgent `X-API-Key` |
+| **Strategy** (advanced local FEP v2.0 workflow) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | Hub Bearer token |
+
+DeepAgent covers market data, analysis, deep reports, strategy generation, backtesting and paper trading — a one-stop quant-trading agent you can reach from any coding assistant via MCP.
 
 ---
 
 ## Quick example
 
 ```ts
-import { resolveOpenFinClawConfig, executeFinPrice } from "@openfinclaw/core";
+import { resolveOpenFinClawConfig, executeDeepagentResearchSubmit } from "@openfinclaw/core";
 
-const config = resolveOpenFinClawConfig({ apiKey: process.env.OPENFINCLAW_API_KEY });
+const config = resolveOpenFinClawConfig({
+  deepagentApiKey: process.env.OPENFINCLAW_DEEPAGENT_API_KEY,
+  allowMissingApiKey: true,
+});
 
-const result = await executeFinPrice({ symbol: "BTC/USDT" }, config);
-console.log(result); // { symbol: "BTC/USDT", market: "crypto", price: ..., timestamp: ... }
+const { taskId } = await executeDeepagentResearchSubmit(
+  { query: "Research NVDA momentum over the last 90 days, propose a strategy, backtest 1y" },
+  config,
+);
+// Then poll with executeDeepagentResearchPoll / finalize with executeDeepagentResearchFinalize
 ```
 
 Every tool follows the same signature:
@@ -52,13 +61,7 @@ Every tool follows the same signature:
 execute<ToolName>(params: Params, config: OpenFinClawConfig): Promise<Result>
 ```
 
-Each tool also ships a paired JSON schema (e.g. `finPriceSchema`) for wiring into any MCP SDK, OpenAI function-calling, or custom validation layer:
-
-```ts
-import { finPriceSchema } from "@openfinclaw/core";
-
-// finPriceSchema = { type: "object", properties: { symbol: {...}, market: {...} }, required: ["symbol"] }
-```
+Each tool also ships a paired JSON schema (e.g. `deepagentResearchSubmitSchema`) for wiring into any MCP SDK, OpenAI function-calling, or custom validation layer.
 
 ---
 
@@ -68,14 +71,15 @@ import { finPriceSchema } from "@openfinclaw/core";
 import { resolveOpenFinClawConfig, type OpenFinClawConfig } from "@openfinclaw/core";
 
 const config: OpenFinClawConfig = resolveOpenFinClawConfig({
-  apiKey: "<your-hub-key>",           // optional; falls back to env / config file
-  deepagentApiKey: "<your-deepagent-key>", // optional; only if you use DeepAgent tools
+  apiKey: "<your-hub-key>",                // optional; needed only for strategy tools
+  deepagentApiKey: "<your-deepagent-key>", // optional; needed only for DeepAgent tools
+  allowMissingApiKey: true,                // set when using DeepAgent without a Hub key
 });
 ```
 
 Resolution order (highest priority first):
 
-| Hub key | DeepAgent key |
+| Hub key (strategy group) | DeepAgent key |
 |---|---|
 | `options.apiKey` | `options.deepagentApiKey` |
 | `OPENFINCLAW_API_KEY` env | `OPENFINCLAW_DEEPAGENT_API_KEY` env (also accepts legacy `FINDOO_DEEPAGENT_API_KEY`) |
@@ -115,14 +119,6 @@ resolveOpenFinClawConfig, resolveConfigFromEnv, resolveDeepAgentApiKey
 getUserConfigFilePath, readApiKeyFromConfigFile
 OpenFinClawConfig (type)
 
-// DataHub — execute + schema pairs
-executeFinPrice, finPriceSchema
-executeFinKline, finKlineSchema
-executeFinCrypto, finCryptoSchema
-executeFinCompare, finCompareSchema
-executeFinSlimSearch, finSlimSearchSchema
-DataHubClient, guessMarket
-
 // Strategy — execute + schema pairs
 executeSkillLeaderboard, skillLeaderboardSchema
 executeSkillGetInfo,     skillGetInfoSchema
@@ -153,7 +149,8 @@ OPENFINCLAW_AGENT_GUIDANCE
 
 - **[@openfinclaw/cli](https://www.npmjs.com/package/@openfinclaw/cli)** — MCP Server + terminal CLI (the main entrypoint for end users)
 - **[GitHub repository](https://github.com/mirror29/openfinclaw-cli)** — source, issues, contribution guide
-- **[Hub API Key](https://hub.openfinclaw.ai)** — get your `fch_` key
+- **[DeepAgent online chat](https://hub.openfinclaw.ai/en/chat)** — try the agent in a browser before installing
+- **[Hub API Key](https://hub.openfinclaw.ai)** — get your `fch_` key for the strategy group
 
 ---
 

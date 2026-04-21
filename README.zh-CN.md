@@ -4,19 +4,23 @@
 
 <img src="imgs/logo.svg" alt="OpenFinClaw" width="680">
 
-**给 Claude Code / Cursor / 20+ AI Agent 插上金融大脑 — 实时行情 + AI 回测，基于 MCP**
+**一站式量化交易金融 Agent — 给 Claude Code / Cursor / 20+ AI Agent 插上量化大脑，基于 MCP**
+
+行情获取 · 数据分析 · 深度报告 · 策略生成 · 回测 · 模拟盘 —— 全部交给同一个 DeepAgent。
 
 [![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![npm downloads](https://img.shields.io/npm/dw/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![MCP compatible](https://img.shields.io/badge/MCP-compatible-8A2BE2)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[获取 API Key](https://hub.openfinclaw.ai) · [快速开始](#快速开始) · [支持的平台](#支持的平台) · [DeepAgent 演示](#方式四deepagent可选远端-ai-研究--策略生成)
+[在线体验 DeepAgent](https://hub.openfinclaw.ai/en/chat) · [获取 API Key](https://hub.openfinclaw.ai) · [快速开始](#快速开始) · [支持的平台](#支持的平台)
 
 </div>
+
+> 🧪 **想先尝鲜？** 直接在浏览器里体验 DeepAgent 完整量化工作流（研究 · 策略 · 回测 · 模拟盘）：<https://hub.openfinclaw.ai/en/chat> —— 无需本地安装。
 
 ---
 
 ## 简介
 
-OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 协议与任何 AI Agent 平台对接。提供行情数据与策略管理 — 可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台访问。
+OpenFinClaw 通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 把一个**一站式量化交易 Agent** 接入任意 AI 编程助手。核心是 **DeepAgent**：一个远端多 Agent 服务，能够用一句自然语言 Prompt 完成从行情获取、数据分析、深度报告、策略生成、回测到模拟盘建议的全流程。可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台直接调用。
 
 <p align="center">
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent 回测结果 — 特斯拉布林带" width="620">
@@ -28,13 +32,14 @@ OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Prot
 
 | 分类 | 工具 | 说明 |
 |------|------|------|
-| **行情数据** | `fin_price` `fin_kline` `fin_crypto` `fin_compare` `fin_slim_search` | 实时价格、K线/OHLCV、加密货币/DeFi 数据、多资产对比、代码搜索 |
-| **策略管理** | `skill_publish` `skill_validate` `skill_fork` `skill_leaderboard` `skill_get_info` `skill_list_local` `skill_publish_verify` | 发布策略到 Hub、验证 FEP v2.0 包、Fork 公开策略、排行榜查询 |
-| **DeepAgent** | `fin_deepagent_research_*` `fin_deepagent_backtests` `fin_deepagent_packages` `fin_deepagent_download_package` … | 远端 AI 研究 / 回测 / 策略生成（独立 DeepAgent Key） |
+| **DeepAgent**（一站式量化 Agent） | `fin_deepagent_research_*` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` · `_threads` · `_messages` · `_health` · `_skills` · `_status` · `_cancel` | 金融相关问题一站问到底：行情、分析、深度报告、策略生成、回测、模拟盘建议，一个 Agent 全包。 |
+| **策略管理**（进阶本地 FEP v2.0 工作流） | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | 面向策略作者：发布到 Hub、校验 FEP v2.0 包、Fork 公开策略、查看排行榜。 |
 
 ---
 
 ## 快速开始
+
+> 💡 想先直观感受一下？**[在浏览器里先试 DeepAgent](https://hub.openfinclaw.ai/en/chat)**，再决定是否本地集成。
 
 ### 方式一：交互式安装（推荐）
 
@@ -43,13 +48,13 @@ npx @openfinclaw/cli init
 ```
 
 安装向导会：
-- 引导输入 API Key
+- 引导输入 API Key（Hub 可选，仅 strategy 组需要；DeepAgent 主推填一下）
 - 让你选择要启用的工具组
-- 结合本机安装痕迹（如应用包、用户数据目录、`PATH` 中的 CLI）与**已有 MCP 配置路径**自动勾选候选平台；二者含义不同，也不等同于「本机装过的所有应用」
+- 结合本机安装痕迹（如应用包、用户数据目录、`PATH` 中的 CLI）与**已有 MCP 配置路径**自动勾选候选平台
 - 将 MCP 配置写入所选平台
-- 写入 `~/.openfinclaw/config.json`（仅保存 API Key），终端可直接用 CLI 而无需 `export`（Unix 下文件权限 600）
+- 写入 `~/.openfinclaw/config.json`（Unix 下权限 600），终端可直接用 CLI 而无需 `export`
 
-**CLI 与 MCP：** 各 Agent 从自己的 MCP 配置里 `env` 注入密钥，**不会**改你的 shell 配置。若终端里已 `export OPENFINCLAW_API_KEY`，本机启动的进程仍会读到该变量，这是正常现象。`openfinclaw` / `serve` 解析顺序：`--api-key` → 环境变量 `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json`。
+**CLI 与 MCP：** 各 Agent 从自己的 MCP 配置里 `env` 注入密钥，**不会**改你的 shell 配置。`openfinclaw` / `serve` 解析顺序：CLI 参数 → 环境变量 → `~/.openfinclaw/config.json`。
 
 ### 方式二：手动配置
 
@@ -62,12 +67,15 @@ npx @openfinclaw/cli init
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve"],
       "env": {
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key_here",
         "OPENFINCLAW_API_KEY": "fch_你的密钥"
       }
     }
   }
 }
 ```
+
+不需要哪组工具就可以省掉对应那把 Key —— Hub 与 DeepAgent 是两套独立鉴权。
 
 ### 方式三：命令行直接使用
 
@@ -83,36 +91,35 @@ npm install -g @openfinclaw/cli      # 或：pnpm add -g @openfinclaw/cli
 
 下面示例都用短命令 `openfinclaw <cmd>`。如果你选了 B，把它替换成 `npx -y @openfinclaw/cli <cmd>` 即可。
 
-**第 2 步 — 提供 API Key（三选一）**
+**第 2 步 — 提供 API Key**
 
 ```bash
 # A. 跑一次 init 向导（写入 ~/.openfinclaw/config.json，Unix 下权限 600）
 openfinclaw init
 
 # B. 当前 shell 会话 export
-export OPENFINCLAW_API_KEY=fch_你的密钥
+export OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>
+export OPENFINCLAW_API_KEY=fch_你的密钥   # 仅在使用 strategy 组时需要
 
 # C. 单次命令行内传入
-openfinclaw price AAPL --api-key fch_你的密钥
+openfinclaw deepagent research "..." --deepagent-api-key your_key
 ```
 
 **第 3 步 — 执行命令**
 
 ```bash
-# 实时行情（股票 / 加密 / 指数）
-openfinclaw price AAPL
-openfinclaw price BTC/USDT
+# 一句话完成研究 / 分析 / 策略生成 / 回测（流式输出）
+openfinclaw deepagent research "研究 NVDA 近 90 天走势，生成一个动量策略并回测 1 年，最后给出模拟盘建议"
 
-# K 线 / OHLCV
-openfinclaw kline 600519.SH --limit 30
+# 查看历史 DeepAgent 任务
+openfinclaw deepagent backtests
+openfinclaw deepagent packages
+openfinclaw deepagent download <packageId>
 
-# 多资产对比
-openfinclaw compare AAPL,GOOGL,MSFT,AMZN
+# 服务健康检查（公开，无需 Key）
+openfinclaw deepagent health
 
-# 代码搜索
-openfinclaw search "茅台"
-
-# 排行榜
+# Hub 策略排行榜（需要 Hub Key）
 openfinclaw leaderboard --limit 10
 
 # 诊断配置与连通性
@@ -126,16 +133,15 @@ openfinclaw update
 
 | 分组 | 命令 |
 |------|------|
-| 行情数据 | `price`、`kline`、`crypto`、`compare`、`search` |
-| 策略管理 | `leaderboard`、`strategy-info`、`fork`、`list-strategies`、`validate`、`publish`、`publish-verify` |
 | DeepAgent | `deepagent health`、`deepagent skills`、`deepagent research`、`deepagent threads`、`deepagent messages`、`deepagent backtests`、`deepagent packages`、`deepagent download` |
+| 策略管理 | `leaderboard`、`strategy-info`、`fork`、`list-strategies`、`validate`、`publish`、`publish-verify` |
 | 系统 | `init`、`serve`、`doctor`、`update` |
 
 运行 `openfinclaw --help` 查看完整用法与选项。
 
-### 方式四：DeepAgent（可选，远端 AI 研究 / 策略生成）
+### 方式四：DeepAgent 详解
 
-DeepAgent 是**独立服务，使用独立的 API Key**（`OPENFINCLAW_DEEPAGENT_API_KEY`）。执行 `deepagent *` 或 `doctor` **不需要** Hub Key：
+DeepAgent 有**独立的 API Key**（`OPENFINCLAW_DEEPAGENT_API_KEY`）。执行 `deepagent *` 或 `doctor` **不需要** Hub Key：
 
 ```bash
 # 保存 Key（也可单次用 --deepagent-api-key 传入）
@@ -143,14 +149,9 @@ export OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>
 
 # 终端流式研究（token-by-token 输出）
 openfinclaw deepagent research "帮我写一个特斯拉布林带策略并跑回测"
-
-# 查看历史任务
-openfinclaw deepagent backtests
-openfinclaw deepagent packages
-openfinclaw deepagent download <packageId>
 ```
 
-`openfinclaw init` 可一次性保存 Hub + DeepAgent 两把 Key 到 `~/.openfinclaw/config.json`。DeepAgent Key 通过 Hub 后台申请。
+`openfinclaw init` 可一次性保存 Hub + DeepAgent 两把 Key 到 `~/.openfinclaw/config.json`。DeepAgent Key 通过 Hub 后台申请，或先去 <https://hub.openfinclaw.ai/en/chat> 在线体验。
 
 **演示效果** —— 一句 Prompt 即可产出策略定义、回测指标、逐笔交易 P&L 与优化建议：
 
@@ -184,8 +185,11 @@ OpenFinClaw 支持所有兼容 MCP 协议的 Agent 平台：
   "mcpServers": {
     "openfinclaw": {
       "command": "npx",
-      "args": ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"],
-      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+      "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
+      "env": {
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
+        "OPENFINCLAW_API_KEY": "fch_xxx"
+      }
     }
   }
 }
@@ -200,8 +204,11 @@ OpenFinClaw 支持所有兼容 MCP 协议的 Agent 平台：
   "mcpServers": {
     "openfinclaw": {
       "command": "npx",
-      "args": ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"],
-      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+      "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
+      "env": {
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
+        "OPENFINCLAW_API_KEY": "fch_xxx"
+      }
     }
   }
 }
@@ -216,8 +223,11 @@ OpenFinClaw 支持所有兼容 MCP 协议的 Agent 平台：
   "servers": {
     "openfinclaw": {
       "command": "npx",
-      "args": ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"],
-      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+      "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
+      "env": {
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
+        "OPENFINCLAW_API_KEY": "fch_xxx"
+      }
     }
   }
 }
@@ -231,8 +241,9 @@ OpenFinClaw 支持所有兼容 MCP 协议的 Agent 平台：
 mcp_servers:
   openfinclaw:
     command: "npx"
-    args: ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"]
+    args: ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"]
     env:
+      OPENFINCLAW_DEEPAGENT_API_KEY: "your_deepagent_key"
       OPENFINCLAW_API_KEY: "fch_xxx"
 ```
 </details>
@@ -247,7 +258,10 @@ mcp_servers:
     "openfinclaw": {
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve"],
-      "env": { "OPENFINCLAW_API_KEY": "fch_xxx" }
+      "env": {
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
+        "OPENFINCLAW_API_KEY": "fch_xxx"
+      }
     }
   }
 }
@@ -261,22 +275,22 @@ mcp_servers:
 按需加载工具组，减少 token 消耗：
 
 ```bash
-# 仅加载行情数据（~700 tokens）
-npx @openfinclaw/cli serve --tools=datahub
+# 仅加载 DeepAgent —— 一站式量化 Agent（~1,400 tokens）
+npx @openfinclaw/cli serve --tools=deepagent
 
-# 仅加载策略管理（~1,000 tokens）
+# 仅加载 strategy 组（~1,000 tokens）
 npx @openfinclaw/cli serve --tools=strategy
 
 # 多个分组
-npx @openfinclaw/cli serve --tools=datahub,strategy
+npx @openfinclaw/cli serve --tools=deepagent,strategy
 
-# 全部工具（默认，~1,700 tokens）
+# 全部工具（默认）
 npx @openfinclaw/cli serve
 ```
 
 | 分组 | 工具 | tokens 估算 |
 |------|------|------------|
-| `datahub` | fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search | ~700 |
+| `deepagent` | fin_deepagent_health / _skills / _research_submit / _research_poll / _research_finalize / _status / _cancel / _threads / _messages / _backtests / _backtest_result / _packages / _package_meta / _download_package | ~1,400 |
 | `strategy` | skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify | ~1,000 |
 
 ---
@@ -286,7 +300,7 @@ npx @openfinclaw/cli serve
 ```
 ┌─────────────────────────────────┐
 │       @openfinclaw/core         │  纯业务逻辑
-│     (零平台依赖)                 │  API 客户端、类型、Schema
+│     (零平台依赖)                 │  DeepAgent 客户端、策略工具、共享类型
 └──────────────┬──────────────────┘
                │
        ┌───────┼───────┐
@@ -303,7 +317,7 @@ npx @openfinclaw/cli serve
 
 项目是 monorepo 结构，包含两个包：
 
-- **`@openfinclaw/core`** — 平台无关的业务逻辑（API 客户端、类型定义、工具 Schema）
+- **`@openfinclaw/core`** — 平台无关的业务逻辑（DeepAgent 客户端、策略工具、共享类型）
 - **`@openfinclaw/cli`** — MCP Server + CLI 命令 + 交互式安装向导
 
 ---
@@ -312,13 +326,15 @@ npx @openfinclaw/cli serve
 
 | 变量 | 必填 | 说明 | 默认值 |
 |------|------|------|--------|
-| `OPENFINCLAW_API_KEY` | 密钥来源之一 | Hub 与 DataHub API Key（`fch_` 前缀）。若未传 `--api-key`，可在 init 后回退读取 `~/.openfinclaw/config.json`。 | — |
-| `OPENFINCLAW_CONFIG_PATH` | 否 | 覆盖 JSON 配置文件路径 `{ "apiKey": "..." }`（测试或自定义） | `~/.openfinclaw/config.json` |
+| `OPENFINCLAW_DEEPAGENT_API_KEY` | DeepAgent 工具需要 | DeepAgent 服务独立 Key（与 Hub `fch_` 不同；以 `X-API-Key` 头发送）。可回退 `~/.openfinclaw/config.json`。 | — |
+| `OPENFINCLAW_API_KEY` | strategy 组需要 | Hub API Key（`fch_` 前缀）。`deepagent *` 与 `doctor` 不强制需要。 | — |
+| `OPENFINCLAW_CONFIG_PATH` | 否 | 覆盖 JSON 配置文件路径 `{ "apiKey": "...", "deepagentApiKey": "..." }` | `~/.openfinclaw/config.json` |
 | `HUB_API_URL` | 否 | Hub API 地址 | `https://hub.openfinclaw.ai` |
-| `DATAHUB_GATEWAY_URL` | 否 | DataHub 网关地址 | `https://datahub.openfinclaw.ai` |
+| `DEEPAGENT_API_URL` | 否 | DeepAgent API 地址 | `https://api.openfinclaw.ai/agent` |
 | `REQUEST_TIMEOUT_MS` | 否 | HTTP 请求超时（毫秒） | `60000` |
+| `DEEPAGENT_SSE_TIMEOUT_MS` | 否 | DeepAgent SSE 流超时（毫秒） | `900000` |
 
-在 [hub.openfinclaw.ai](https://hub.openfinclaw.ai) 获取 API Key。
+在 [hub.openfinclaw.ai](https://hub.openfinclaw.ai) 获取 API Key；也可以先去 <https://hub.openfinclaw.ai/en/chat> 在线体验 DeepAgent。**Hub Key 与 DeepAgent Key 互相独立**，有其一不等于拥有另一把。
 
 ---
 
@@ -334,10 +350,10 @@ pnpm install
 pnpm build
 
 # 本地运行 CLI
-OPENFINCLAW_API_KEY=fch_xxx node packages/cli/dist/index.js price AAPL
+OPENFINCLAW_DEEPAGENT_API_KEY=<key> node packages/cli/dist/index.js deepagent health
 
 # 本地运行 MCP Server
-OPENFINCLAW_API_KEY=fch_xxx node packages/cli/dist/index.js serve
+OPENFINCLAW_DEEPAGENT_API_KEY=<key> node packages/cli/dist/index.js serve
 ```
 
 ---

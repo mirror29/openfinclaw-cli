@@ -1,7 +1,7 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.4.11",
-  "description": "Cross-platform financial tools for AI agents — MCP server + CLI",
+  "version": "0.5.0",
+  "description": "One-stop quant-trading AI agent for any coding assistant — MCP server + CLI",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -21,6 +21,12 @@
   },
   "keywords": [
     "openfinclaw",
+    "deepagent",
+    "trading-agent",
+    "quant",
+    "quantitative-trading",
+    "paper-trading",
+    "backtest",
     "mcp",
     "mcp-server",
     "model-context-protocol",
@@ -33,17 +39,7 @@
     "financial",
     "finance",
     "fintech",
-    "market-data",
-    "stock",
-    "stocks",
-    "crypto",
-    "cryptocurrency",
-    "trading",
-    "algorithmic-trading",
-    "quant",
-    "backtest",
-    "ohlcv",
-    "kline",
+    "strategy",
     "cli"
   ],
   "scripts": {

@@ -2,9 +2,10 @@
   "servers": {
     "openfinclaw": {
       "command": "npx",
-      "args": ["@openfinclaw/cli", "serve", "--tools=datahub,strategy"],
+      "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
       "env": {
-        "OPENFINCLAW_API_KEY": "fch_your_key_here"
+        "OPENFINCLAW_API_KEY": "fch_your_key_here",
+        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key_here"
       }
     }
   }

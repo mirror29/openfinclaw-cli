@@ -13,7 +13,6 @@ export {
   getUserConfigFilePath,
   readApiKeyFromConfigFile,
   DEFAULT_HUB_API_URL,
-  DEFAULT_DATAHUB_GATEWAY_URL,
   DEFAULT_DEEPAGENT_API_URL,
   DEFAULT_TIMEOUT_MS,
   DEFAULT_SSE_TIMEOUT_MS,
@@ -21,21 +20,6 @@ export {
 
 // Types
 export * from "./types.js";
-
-// DataHub
-export { DataHubClient, guessMarket } from "./datahub/client.js";
-export {
-  executeFinPrice,
-  finPriceSchema,
-  executeFinKline,
-  finKlineSchema,
-  executeFinCrypto,
-  finCryptoSchema,
-  executeFinCompare,
-  finCompareSchema,
-  executeFinSlimSearch,
-  finSlimSearchSchema,
-} from "./datahub/tools.js";
 
 // Strategy
 export { hubApiRequest } from "./strategy/client.js";

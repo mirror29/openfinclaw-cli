@@ -8,11 +8,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import {
   resolveOpenFinClawConfig,
-  executeFinPrice,
-  executeFinKline,
-  executeFinCrypto,
-  executeFinCompare,
-  executeFinSlimSearch,
   executeSkillLeaderboard,
   executeSkillGetInfo,
   executeSkillFork,
@@ -38,9 +33,9 @@ import {
   type OpenFinClawConfig,
 } from "@openfinclaw/core";
 
-/** Parse --tools=datahub,strategy,deepagent from argv */
+/** Parse --tools=strategy,deepagent from argv */
 function parseToolGroups(argv: string[]): string[] {
-  const ALL_GROUPS = ["datahub", "strategy", "deepagent"];
+  const ALL_GROUPS = ["strategy", "deepagent"];
   for (const arg of argv) {
     if (arg.startsWith("--tools=")) {
       const groups = arg
@@ -72,83 +67,9 @@ function wrapHandler<P>(
 }
 
 export async function startMcpServer() {
-  const config = resolveOpenFinClawConfig();
+  const config = resolveOpenFinClawConfig({ allowMissingApiKey: true });
   const groups = parseToolGroups(process.argv);
-  const server = new McpServer({ name: "openfinclaw", version: "0.1.0" });
-
-  if (groups.includes("datahub")) {
-    server.registerTool(
-      "fin_price",
-      {
-        description: "Get current/latest price for stocks (A/HK/US), crypto, or index",
-        inputSchema: {
-          symbol: z.string().describe(
-            "Asset symbol. Crypto: BTC/USDT, ETH/USDT; A-share: 600519.SH; HK: 00700.HK; US: AAPL",
-          ),
-          market: z.enum(["crypto", "equity"]).optional().describe("Market type. Auto-detected if omitted."),
-        },
-      },
-      wrapHandler(config, executeFinPrice),
-    );
-
-    server.registerTool(
-      "fin_kline",
-      {
-        description: "Fetch historical OHLCV (candlestick) data for any asset",
-        inputSchema: {
-          symbol: z.string().describe("Asset symbol (BTC/USDT, 600519.SH, AAPL, etc.)"),
-          market: z.enum(["crypto", "equity"]).optional().describe("Market type (auto-detected if omitted)"),
-          limit: z.number().optional().describe("Number of bars to return (default: 30)"),
-        },
-      },
-      wrapHandler(config, executeFinKline),
-    );
-
-    server.registerTool(
-      "fin_crypto",
-      {
-        description: "Crypto market data (ticker/orderbook/trades/DeFi/CoinGecko metrics)",
-        inputSchema: {
-          endpoint: z.enum([
-            "market/ticker", "market/tickers", "market/orderbook", "market/trades",
-            "market/funding_rate", "coin/market", "coin/historical", "coin/info",
-            "coin/categories", "coin/trending", "coin/global_stats",
-            "defi/protocols", "defi/tvl_historical", "defi/protocol_tvl", "defi/chains",
-            "defi/yields", "defi/stablecoins", "defi/fees", "defi/dex_volumes",
-            "defi/bridges", "defi/coin_prices", "price/historical", "search",
-          ]).describe("DataHub crypto endpoint path"),
-          symbol: z.string().optional().describe("Coin ID, trading pair, or protocol slug"),
-          start_date: z.string().optional().describe("Start date (YYYY-MM-DD)"),
-          end_date: z.string().optional().describe("End date (YYYY-MM-DD)"),
-          limit: z.number().optional().describe("Max results (default: 20)"),
-        },
-      },
-      wrapHandler(config, executeFinCrypto),
-    );
-
-    server.registerTool(
-      "fin_compare",
-      {
-        description: "Compare prices of 2-5 assets side by side with weekly change",
-        inputSchema: {
-          symbols: z.string().describe("Comma-separated symbols (2-5). Example: BTC/USDT,ETH/USDT,600519.SH"),
-        },
-      },
-      wrapHandler(config, executeFinCompare),
-    );
-
-    server.registerTool(
-      "fin_slim_search",
-      {
-        description: "Search for stock/crypto symbols by name or keyword",
-        inputSchema: {
-          query: z.string().describe("Search keyword (e.g. 'apple', 'bitcoin', 'Tesla')"),
-          market: z.enum(["crypto", "equity"]).optional().describe("Limit search to market type"),
-        },
-      },
-      wrapHandler(config, executeFinSlimSearch),
-    );
-  }
+  const server = new McpServer({ name: "openfinclaw", version: "0.5.0" });
 
   // ── Strategy tools ──
   if (groups.includes("strategy")) {
@@ -287,7 +208,9 @@ export async function startMcpServer() {
       "fin_deepagent_research_submit",
       {
         description:
-          "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId IMMEDIATELY.\n\n" +
+          "Start a long-running DeepAgent research task (takes 3-10 min). Returns a taskId IMMEDIATELY. " +
+          "Covers price lookup / market analysis / deep report / strategy generation / backtest / paper-trade — " +
+          "DeepAgent is a one-stop quant-trading agent, use it for anything finance-related.\n\n" +
           "REQUIRED BEHAVIOR AFTER CALLING:\n" +
           "1. Tell the user in one short line: 'Research started (~3-10 min), streaming progress below.'\n" +
           "2. IMMEDIATELY start calling fin_deepagent_research_poll with the returned taskId. The poll tool " +
@@ -424,7 +347,8 @@ export async function startMcpServer() {
   server.registerPrompt(
     "openfinclaw-guidance",
     {
-      description: "OpenFinClaw financial tools usage guide",
+      description:
+        "How to use OpenFinClaw: DeepAgent (one-stop quant agent — market data / analysis / reports / strategy gen / backtest / paper trade) and local strategy tools",
     },
     () => ({
       messages: [

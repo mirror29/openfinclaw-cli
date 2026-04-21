@@ -9,7 +9,6 @@ import { join } from "node:path";
 
 /** Default URLs */
 export const DEFAULT_HUB_API_URL = "https://hub.openfinclaw.ai";
-export const DEFAULT_DATAHUB_GATEWAY_URL = "https://datahub.openfinclaw.ai";
 export const DEFAULT_DEEPAGENT_API_URL = "https://api.openfinclaw.ai/agent";
 export const DEFAULT_TIMEOUT_MS = 60_000;
 /** Default SSE timeout for long-running DeepAgent research (15 min) */
@@ -17,12 +16,10 @@ export const DEFAULT_SSE_TIMEOUT_MS = 900_000;
 
 /** Core configuration interface */
 export interface OpenFinClawConfig {
-  /** API Key for Hub and DataHub (fch_ prefix) */
+  /** API Key for Hub (fch_ prefix) */
   apiKey: string;
   /** Hub API URL */
   hubApiUrl: string;
-  /** DataHub Gateway URL */
-  datahubGatewayUrl: string;
   /** Request timeout in milliseconds */
   requestTimeoutMs: number;
   /** Optional local workspace database path (`OPENFINCLAW_DB_PATH`) */
@@ -60,7 +57,7 @@ export interface ResolveOpenFinClawConfigOptions {
    * only `OPENFINCLAW_DEEPAGENT_API_KEY` can still run `deepagent *` and
    * `doctor` commands.
    *
-   * Callers must still check `config.apiKey` before hitting Hub/DataHub.
+   * Callers must still check `config.apiKey` before hitting Hub.
    */
   allowMissingApiKey?: boolean;
 }
@@ -142,9 +139,6 @@ function buildConfigFromApiKey(
   return {
     apiKey,
     hubApiUrl: (process.env.HUB_API_URL?.trim() || DEFAULT_HUB_API_URL).replace(/\/+$/, ""),
-    datahubGatewayUrl: (
-      process.env.DATAHUB_GATEWAY_URL?.trim() || DEFAULT_DATAHUB_GATEWAY_URL
-    ).replace(/\/+$/, ""),
     requestTimeoutMs: Math.max(
       5000,
       Math.min(300_000, Number(process.env.REQUEST_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS),

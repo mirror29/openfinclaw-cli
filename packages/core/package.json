@@ -1,7 +1,7 @@
 {
   "name": "@openfinclaw/core",
-  "version": "0.4.11",
-  "description": "Platform-independent financial tools core — API clients, types, and tool schemas for OpenFinClaw",
+  "version": "0.5.0",
+  "description": "Core logic for OpenFinClaw — DeepAgent client, strategy tools & shared types",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,12 +23,14 @@
   },
   "keywords": [
     "openfinclaw",
+    "deepagent",
+    "quant",
+    "trading-agent",
     "financial",
-    "market-data",
     "mcp",
-    "stock",
-    "crypto",
-    "strategy"
+    "strategy",
+    "backtest",
+    "paper-trading"
   ],
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc",

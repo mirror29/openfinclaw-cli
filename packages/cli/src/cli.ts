@@ -5,11 +5,6 @@
 import {
   resolveOpenFinClawConfig,
   getUserConfigFilePath,
-  executeFinPrice,
-  executeFinKline,
-  executeFinCrypto,
-  executeFinCompare,
-  executeFinSlimSearch,
   executeSkillLeaderboard,
   executeSkillGetInfo,
   executeSkillFork,
@@ -46,6 +41,9 @@ import {
   padLeft,
   truncate,
 } from "./styles.js";
+
+/** Online DeepAgent chat URL (no-install trial). */
+const ONLINE_TRY_URL = "https://hub.openfinclaw.ai/en/chat";
 
 /**
  * Parse argv after the subcommand into positional args and `--key` / `--key=value` flags.
@@ -139,142 +137,6 @@ export async function runCli(command: string, args: string[]) {
 
   try {
     switch (command) {
-      case "price": {
-        if (!positional[0]) usageExit("openfinclaw price <symbol>");
-        const result = await executeFinPrice(
-          { symbol: positional[0]!, market: flags.market },
-          config,
-        );
-        if (outputJson) {
-          printJson(result);
-        } else {
-          console.log(header(`${result.symbol}  ${color.gray(`(${result.market})`)}`));
-          console.log(kv("Price", color.boldGreen(String(result.price))));
-          if (result.volume24h) console.log(kv("Volume 24h", String(result.volume24h)));
-          console.log(kv("Time", color.gray(fmtTime(result.timestamp))));
-          console.log();
-        }
-        break;
-      }
-
-      case "kline": {
-        if (!positional[0]) usageExit("openfinclaw kline <symbol> [--limit N]");
-        const limit = flags.limit ? Number(flags.limit) : 30;
-        const result = await executeFinKline(
-          { symbol: positional[0]!, market: flags.market, limit },
-          config,
-        );
-        if (outputJson) {
-          printJson(result);
-        } else {
-          console.log(
-            header(`${result.symbol}  ${color.gray(`(${result.market}) · ${result.count} bars`)}`),
-          );
-          const head =
-            "  " +
-            color.gray(
-              padRight("Date", 12) +
-                padLeft("Open", 11) +
-                padLeft("High", 11) +
-                padLeft("Low", 11) +
-                padLeft("Close", 11) +
-                padLeft("Volume", 14),
-            );
-          console.log(head);
-          const bars = result.bars.slice(-10);
-          let prevClose: number | null = null;
-          for (const bar of bars) {
-            const close = Number(bar.close);
-            const up = prevClose == null ? 0 : close - prevClose;
-            const closeColored =
-              up > 0 ? color.green(String(bar.close)) : up < 0 ? color.red(String(bar.close)) : String(bar.close);
-            console.log(
-              "  " +
-                padRight(bar.date, 12) +
-                padLeft(String(bar.open), 11) +
-                padLeft(String(bar.high), 11) +
-                padLeft(String(bar.low), 11) +
-                padLeft(closeColored, 11) +
-                padLeft(String(bar.volume), 14),
-            );
-            prevClose = close;
-          }
-          if (result.count > 10)
-            console.log(color.gray(`  … ${result.count - 10} more row(s) hidden`));
-          console.log();
-        }
-        break;
-      }
-
-      case "crypto": {
-        const endpoint = positional[0] || "coin/market";
-        const result = await executeFinCrypto(
-          {
-            endpoint,
-            symbol: positional[1] || flags.symbol,
-            limit: flags.limit ? Number(flags.limit) : undefined,
-          },
-          config,
-        );
-        printJson(result);
-        break;
-      }
-
-      case "compare": {
-        if (!positional[0]) usageExit("openfinclaw compare <sym1,sym2,...>");
-        const result = await executeFinCompare({ symbols: positional[0]! }, config);
-        if (outputJson) {
-          printJson(result);
-        } else if ("comparison" in result && result.comparison) {
-          console.log(header("Asset comparison"));
-          for (const item of result.comparison as Array<Record<string, unknown>>) {
-            if ("error" in item) {
-              console.log(errorLine(`${item.symbol}: ${item.error}`));
-            } else {
-              const wc = Number(item.weekChange ?? 0);
-              console.log(
-                "  " +
-                  padRight(String(item.symbol), 14) +
-                  padLeft(color.bold(String(item.price)), 14) +
-                  "  " +
-                  trendArrow(wc) +
-                  " " +
-                  formatPercent(wc, 2) +
-                  color.gray(" (7d)"),
-              );
-            }
-          }
-          console.log();
-        }
-        break;
-      }
-
-      case "search": {
-        if (!positional[0]) usageExit("openfinclaw search <query>");
-        const result = await executeFinSlimSearch(
-          { query: positional[0]!, market: flags.market },
-          config,
-        );
-        if (outputJson) {
-          printJson(result);
-        } else {
-          console.log(
-            header(`Search "${result.query}"  ${color.gray(`· ${result.count} result(s)`)}`),
-          );
-          for (const r of result.results as Array<Record<string, unknown>>) {
-            const symStr = String(r.symbol ?? r.id ?? "");
-            console.log(
-              "  " +
-                color.cyan(padRight(symStr, 16)) +
-                padRight(String(r.name ?? ""), 30) +
-                color.gray(`(${r.market ?? ""})`),
-            );
-          }
-          console.log();
-        }
-        break;
-      }
-
       case "leaderboard": {
         const boardType = flags.board ?? "composite";
         const limit = flags.limit ? Number(flags.limit) : 10;
@@ -549,31 +411,11 @@ export async function runCli(command: string, args: string[]) {
         console.log(kv("DeepAgent Key", dpMark));
         console.log(kv("Config", color.gray(getUserConfigFilePath())));
         console.log(kv("Hub URL", color.cyan(config.hubApiUrl)));
-        console.log(kv("DataHub", color.cyan(config.datahubGatewayUrl)));
         if (config.deepagentApiUrl)
           console.log(kv("DeepAgent URL", color.cyan(config.deepagentApiUrl)));
         console.log(kv("Timeout", `${config.requestTimeoutMs}ms`));
         console.log();
         console.log(color.gray("  Connectivity"));
-        if (!config.apiKey) {
-          console.log(
-            kv("DataHub", color.gray(sym.dot + " skipped (Hub key not configured)")),
-          );
-        } else {
-          try {
-            await executeFinPrice({ symbol: "BTC/USDT" }, config);
-            console.log(kv("DataHub", color.green(sym.check + " OK (BTC/USDT)")));
-          } catch (err) {
-            console.log(
-              kv(
-                "DataHub",
-                color.red(
-                  `${sym.cross} FAIL · ${err instanceof Error ? err.message : String(err)}`,
-                ),
-              ),
-            );
-          }
-        }
         try {
           const h = await executeDeepagentHealth({}, config);
           if (h.success) {
@@ -594,6 +436,8 @@ export async function runCli(command: string, args: string[]) {
             ),
           );
         }
+        console.log();
+        console.log(hint(`Try DeepAgent online → ${color.cyan(ONLINE_TRY_URL)}`));
         console.log();
         break;
       }
@@ -951,7 +795,7 @@ async function streamResearch(
   console.log(kv("Thread", color.gray(threadId)));
   console.log(kv("Query", color.bold(query)));
   console.log();
-  console.log(color.gray("───────── Generating ─────────"));
+  console.log(color.amber700("───────── Generating ─────────"));
 
   const resp = await fetch(url, {
     method: "POST",
@@ -999,7 +843,7 @@ async function streamResearch(
     }
   }
   process.stdout.write("\n");
-  console.log(color.gray("───────── Done ─────────"));
+  console.log(color.amber700("───────── Done ─────────"));
   if (runId) console.log(hint(`runId: ${color.gray(runId)}`));
   if (isError) process.exit(1);
 }

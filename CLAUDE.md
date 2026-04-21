@@ -21,7 +21,7 @@
 
 - **永远不要把真实 API Key 写进仓库里**（代码、测试、Markdown、提交说明、issue、PR 描述都不行）。示例和文档统一使用占位符：`fch_xxx`、`<your-hub-key>`、`<your-deepagent-key>`。
 - **两把独立的 Key**：
-  - `OPENFINCLAW_API_KEY` — Hub + DataHub（`fch_` 前缀，`Authorization: Bearer` 鉴权）
+  - `OPENFINCLAW_API_KEY` — Hub（strategy 组）（`fch_` 前缀，`Authorization: Bearer` 鉴权）
   - `OPENFINCLAW_DEEPAGENT_API_KEY` — DeepAgent（服务端独立鉴权，走 `X-API-Key` header）
 - **用户层持久化**：`~/.openfinclaw/config.json`（由 `openfinclaw init` 写入；Unix 自动 `chmod 600`）。字段：`apiKey` / `deepagentApiKey`。
 - **MCP 子进程层**：各 agent 平台配置文件里的 `env` 字段（由 `init` 写入；例 `~/Library/Application Support/Claude/claude_desktop_config.json`）。
@@ -36,19 +36,20 @@
   - Hub key: `--api-key` (CLI) → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json#apiKey`
   - DeepAgent key: `--deepagent-api-key` → `OPENFINCLAW_DEEPAGENT_API_KEY` / `FINDOO_DEEPAGENT_API_KEY` → `~/.openfinclaw/config.json#deepagentApiKey`
   - Override config file path with `OPENFINCLAW_CONFIG_PATH`。
-  - `resolveOpenFinClawConfig({ allowMissingApiKey: true })` returns a config with `apiKey: ""` instead of throwing — used by CLI `deepagent` / `doctor` paths so users with **only** a DeepAgent key don't get blocked at config resolution. Callers must still verify `config.apiKey` before hitting Hub / DataHub.
+  - `resolveOpenFinClawConfig({ allowMissingApiKey: true })` returns a config with `apiKey: ""` instead of throwing — used by CLI `deepagent` / `doctor` paths and the MCP server so users with **only** a DeepAgent key don't get blocked at config resolution. Callers must still verify `config.apiKey` before hitting Hub (strategy group).
 - **Independent auth surfaces**: Hub 和 DeepAgent 服务端是两套鉴权系统。不要假设一把 Key 两处通用；任何 DeepAgent API 调用必须走 `deepagentApiRequest()` 并用 `X-API-Key`。`openfinclaw deepagent *` 子命令与 `openfinclaw doctor` 不强制要求 Hub key；新增面向 DeepAgent 的子命令时沿用 `allowMissingApiKey` 模式。
 - **Long-running LLM tools**: 远端 Agent 类长耗时操作采用 submit/poll/finalize 三段式（cross-platform-safe，见 `deepagent/tools.ts` 的 `research_submit` / `research_poll` / `research_finalize`）。**不要**试图在单次 MCP tool call 内阻塞等待 LLM 全部完成 —— MCP 客户端会超时或缓冲。
 - **CLI ≠ MCP for streaming**: 终端命令（如 `deepagent research`）可以直接消费 SSE 流做真正 token-by-token 渲染（`process.stdout.write`）；MCP 路径则必须回落到 submit/poll。
 
 ## Tool Groups
 
-Tools are organized into 3 groups that can be loaded independently via `--tools=` flag:
-- `datahub` — 5 market data tools (fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search)
-- `strategy` — 7 strategy management tools (skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify)
-- `deepagent` — 14 远端 AI Agent 工具 (fin_deepagent_health / _skills / _threads / _messages / _research_submit / _research_poll / _research_finalize / _status / _cancel / _backtests / _backtest_result / _packages / _package_meta / _download_package)
+OpenFinClaw 定位为「以 DeepAgent 为核心的一站式量化交易 agent」—— 行情获取、数据分析、深度报告、策略生成、回测、模拟盘全部由 DeepAgent 承载。本地 FEP 策略开发作为独立的进阶工作流并存。
 
-未传 `--tools=` 时三组全部加载。示例：`--tools=datahub,deepagent` 只加载其中两组。
+Tools 分为 2 组，可通过 `--tools=` 独立加载：
+- `deepagent` — 14 远端 AI Agent 工具 (fin_deepagent_health / _skills / _threads / _messages / _research_submit / _research_poll / _research_finalize / _status / _cancel / _backtests / _backtest_result / _packages / _package_meta / _download_package)
+- `strategy` — 7 本地策略管理工具 (skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify)
+
+未传 `--tools=` 时两组全部加载。示例：`--tools=deepagent` 只加载 DeepAgent。想在线先体验 DeepAgent 可访问 <https://hub.openfinclaw.ai/en/chat>。
 
 ### DeepAgent 子模块结构（`packages/core/src/deepagent/`）
 
@@ -63,11 +64,11 @@ Tools are organized into 3 groups that can be loaded independently via `--tools=
 
 ## Adding New Tools
 
-1. Add pure execute function + schema in `packages/core/src/<group>/tools.ts`（`<group>` 可以是 `datahub` / `strategy` / `deepagent` 或新的子目录）
+1. Add pure execute function + schema in `packages/core/src/<group>/tools.ts`（`<group>` 可以是 `deepagent` / `strategy` 或新的子目录）
 2. Export from `packages/core/src/index.ts`
 3. Register MCP tool via `McpServer.registerTool()` (Zod `inputSchema` in the config object) in `packages/cli/src/mcp.ts`，放入对应的 `if (groups.includes("<group>"))` 分支
 4. Optionally add CLI command in `packages/cli/src/cli.ts`，复用 `styles.ts` 里的美化 helper
-5. 新增 tool group 时同步更新：`mcp.ts` 的 `ALL_GROUPS` / `init.ts` 向导的 Step 2 选项 / CLI `--help` / 本文件 Tool Groups 列表
+5. 新增 tool group 时同步更新：`mcp.ts` 的 `ALL_GROUPS` / `init.ts` 向导的 Step 2 `TOOL_GROUP_CHOICES` / CLI `--help` / 本文件 Tool Groups 列表
 
 ## Creating Strategy Packages (FEP v2.0)
 
@@ -151,8 +152,6 @@ def compute(data, context=None):
 
 1. **Unit tests** (always run, no API key needed):
    - `config.test.ts` — config resolution, defaults, env var parsing, edge cases
-   - `datahub-client.test.ts` — `guessMarket()` symbol detection logic
-   - `datahub-tools.test.ts` — JSON schema structure validation for datahub tools
    - `strategy-tools.test.ts` — JSON schema structure validation for strategy tools
    - `strategy-storage.test.ts` — `parseStrategyId()`, `formatDate()`, `generateForkDirName()` utilities
 
@@ -162,7 +161,7 @@ def compute(data, context=None):
 ### Test conventions
 
 - Test tool schemas by checking `required`, `properties`, and `enum` values — not by invoking execute functions with mocked HTTP.
-- For pure utility functions (`guessMarket`, `parseStrategyId`, `formatDate`), test all edge cases.
+- For pure utility functions (`parseStrategyId`, `formatDate`), test all edge cases.
 - Live tests use `describe.skipIf(!HAS_KEY)` to skip gracefully when no API key is set.
 - **Do NOT hardcode API keys in test files** — always read from `process.env.OPENFINCLAW_API_KEY` / `process.env.OPENFINCLAW_DEEPAGENT_API_KEY`. 同理：快照 / fixture / 日志文件里也不可留真实 key。
 - Each test file should be self-contained — no shared mutable state between files.

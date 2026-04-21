@@ -3,8 +3,8 @@
  * @module @openfinclaw/core/prompt-guidance
  */
 export const OPENFINCLAW_AGENT_GUIDANCE = [
-  "当用户需要策略发布、验证、Fork、排行榜、策略详情查询等操作时，必须使用对应的 tool（skill_publish, skill_publish_verify, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local），不要尝试通过 CLI 命令或 HTTP 请求替代。",
-  "当用户需要市场行情数据（价格、K线、加密货币、对比、搜索）时，必须使用 fin_price, fin_kline, fin_crypto, fin_compare, fin_slim_search 等 tool。",
-  "OpenFinClaw 以 MCP 为统一接入方式；请通过上述 tool 调用访问 Hub/DataHub，不要绕过 tool 直接拼请求。",
-  "tool 调用失败时优先检查 API Key 是否配置（OPENFINCLAW_API_KEY 或 MCP env / ~/.openfinclaw/config.json）。",
+  "OpenFinClaw 是「以 DeepAgent 为核心的一站式量化交易 agent」：行情获取、数据分析、深度报告、策略生成、回测、模拟盘都由 DeepAgent 统一承载。需要金融相关能力时，首选 fin_deepagent_research_submit → _research_poll → _research_finalize 三段式调用（长耗时），或 fin_deepagent_health / _skills / _threads / _messages / _backtests / _packages 等直接同步 tool。",
+  "当用户需要对已有策略包做本地开发（发布、验证、Fork、排行榜、详情、本地列表、发布校验）时，使用 strategy 组的 skill_* tool（skill_publish, skill_publish_verify, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local），这是 DeepAgent 之外的本地 FEP v2.0 工作流。",
+  "OpenFinClaw 以 MCP 为统一接入方式；请通过上述 tool 调用访问 DeepAgent 或 Hub，不要绕过 tool 直接拼请求。",
+  "tool 调用失败时优先检查 API Key 是否配置：DeepAgent 走 OPENFINCLAW_DEEPAGENT_API_KEY，Hub/strategy 走 OPENFINCLAW_API_KEY（或 MCP env / ~/.openfinclaw/config.json）。想先在线体验 DeepAgent 可访问 https://hub.openfinclaw.ai/en/chat 。",
 ].join("\n");

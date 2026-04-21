@@ -42,11 +42,6 @@ function hiCyan(s: string): string {
 }
 
 /** @param s - text */
-function hiMagenta(s: string): string {
-  return sgr("95", s);
-}
-
-/** @param s - text */
 function green(s: string): string {
   return sgr("32", s);
 }
@@ -69,6 +64,16 @@ function red(s: string): string {
 /** @param s - text */
 function boldCyan(s: string): string {
   return sgr("1;36", s);
+}
+
+/** 24-bit amber bold — matches Logo Bloomberg-amber accent. */
+function boldAmber(s: string): string {
+  return sgr("1;38;2;245;158;11", s);
+}
+
+/** Amber divider line (Tailwind amber-700, #b45309) — pairs with the gold banner. */
+function amberRule(width: number): string {
+  return sgr("38;2;180;83;9", "─".repeat(width));
 }
 
 // ─── Banner ──────────────────────────────────────────────────────────
@@ -128,24 +133,24 @@ function gradientLines(lines: readonly string[]): string[] {
 function renderBanner(version?: string): string {
   const cols = process.stdout.columns ?? 80;
   const v = version ? `v${version}` : "";
-  const tagline = "Cross-platform MCP setup wizard · auto-detect · one-shot write";
+  const tagline = "One-stop quant-trading agent · MCP setup wizard · auto-detect platforms";
 
   if (cols >= BIG_BANNER_WIDTH + 2) {
     const art = gradientLines(BIG_BANNER_LINES).join("\n");
-    const rule = dim("─".repeat(Math.min(BIG_BANNER_WIDTH, cols)));
-    const badge = `${boldCyan("MCP")} ${dim("·")} ${boldCyan("init")} ${dim(v)}`;
+    const rule = amberRule(Math.min(BIG_BANNER_WIDTH, cols));
+    const badge = `${boldAmber("MCP")} ${dim("·")} ${boldAmber("init")} ${dim(v)}`;
     return `\n${art}\n${rule}\n  ${badge}  ${dim("·")}  ${dim(tagline)}\n`;
   }
 
   if (cols >= COMPACT_BANNER_WIDTH + 2) {
     const art = gradientLines(COMPACT_BANNER_LINES).join("\n");
-    const rule = dim("─".repeat(Math.min(COMPACT_BANNER_WIDTH, cols)));
-    const badge = `${boldCyan("MCP")} ${dim("·")} ${boldCyan("init")} ${dim(v)}`;
+    const rule = amberRule(Math.min(COMPACT_BANNER_WIDTH, cols));
+    const badge = `${boldAmber("MCP")} ${dim("·")} ${boldAmber("init")} ${dim(v)}`;
     return `\n${art}\n${rule}\n  ${badge}  ${dim("·")}  ${dim(tagline)}\n`;
   }
 
   // Very narrow (< 60 cols): plain title.
-  const title = `${boldCyan("OpenFinClaw")} ${dim("·")} ${hiMagenta("MCP · init")} ${dim(v)}`;
+  const title = `${boldAmber("OpenFinClaw")} ${dim("·")} ${boldAmber("MCP · init")} ${dim(v)}`;
   return `\n  ${title}\n  ${dim(tagline)}\n`;
 }
 
@@ -252,9 +257,8 @@ const PLATFORMS: PlatformDef[] = [
 ];
 
 const TOOL_GROUP_CHOICES = [
-  { value: "datahub", label: "datahub", hint: "Market data — price / kline / crypto / compare / search (~700 tokens)" },
-  { value: "strategy", label: "strategy", hint: "Strategy mgmt — publish / validate / fork / leaderboard (~1,000 tokens)" },
-  { value: "deepagent", label: "deepagent", hint: "Remote AI agent — research / backtest / strategy gen (separate key, ~1,400 tokens)" },
+  { value: "deepagent", label: "deepagent (recommended)", hint: "One-stop quant agent — market data / analysis / deep reports / strategy gen / backtest / paper trade (~1,400 tokens)" },
+  { value: "strategy", label: "strategy", hint: "Advanced local workflow — publish / validate / fork / leaderboard for FEP v2.0 packages (~1,000 tokens)" },
 ] as const;
 
 const ALL_GROUP_VALUES = TOOL_GROUP_CHOICES.map((g) => g.value);
@@ -421,14 +425,14 @@ function selectDetectedPlatforms(states: Map<string, PlatformDetectInfo>): Set<s
 
 /**
  * Build the MCP entry stanza (command + args + env).
- * @param toolGroups - Selected tool groups (datahub / strategy / deepagent)
+ * @param toolGroups - Selected tool groups (strategy / deepagent)
  * @param apiKey - Hub API key (fch_...)
  * @param deepagentApiKey - Optional DeepAgent API key (raw, no prefix)
  */
 function buildMcpEntry(toolGroups: string[], apiKey: string, deepagentApiKey?: string) {
   const args = ["@openfinclaw/cli", "serve"];
-  /** When all 3 groups are selected, omit --tools (same as serve default). */
-  if (toolGroups.length > 0 && toolGroups.length < 3) {
+  /** When all groups are selected, omit --tools (same as serve default). */
+  if (toolGroups.length > 0 && toolGroups.length < TOOL_GROUP_CHOICES.length) {
     args.push(`--tools=${toolGroups.join(",")}`);
   }
   const env: Record<string, string> = { OPENFINCLAW_API_KEY: apiKey };
@@ -727,14 +731,14 @@ function printInitHelp(): void {
     `  ${bold("Non-interactive / scripted")}`,
     `    --yes, -y                      Skip every confirmation that can be skipped`,
     `    --platforms <a,b,c>            Target platforms (e.g. cursor,claude-code)`,
-    `    --tool-groups <a,b,c>          Tool groups (datahub / strategy / deepagent)`,
-    `    --api-key <fch_...>            Hub API key`,
-    `    --deepagent-api-key <key>      DeepAgent API key (optional)`,
+    `    --tool-groups <a,b,c>          Tool groups (deepagent / strategy)`,
+    `    --api-key <fch_...>            Hub API key (needed for strategy group)`,
+    `    --deepagent-api-key <key>      DeepAgent API key (needed for deepagent group)`,
     `    --non-interactive              Force line-input mode (bypass clack)`,
     "",
     `  ${bold("Example")}`,
     `    openfinclaw init --yes --platforms cursor,claude-code \\`,
-    `                     --tool-groups datahub,deepagent \\`,
+    `                     --tool-groups deepagent,strategy \\`,
     `                     --api-key fch_xxx --deepagent-api-key <key>`,
     "",
   ];
@@ -782,7 +786,7 @@ export async function runInit(argv: string[] = []): Promise<void> {
     }
     const statsLine = `${bold("Detected")} ${dim("→")} ${hiGreen(`${installedCount} installed`)} ${dim("·")} ${hiCyan(`${configuredCount} configured`)}`;
     if (clack) {
-      clack.intro(`${boldCyan("MCP · init")} ${dim("·")} ${dim("cross-platform setup wizard")}`);
+      clack.intro(`${boldAmber("MCP · init")} ${dim("·")} ${dim("one-stop quant-agent setup wizard")}`);
       clack.log.info(statsLine);
     } else {
       console.log(`  ${statsLine}`);
@@ -867,18 +871,19 @@ export async function runInit(argv: string[] = []): Promise<void> {
     s.stop(`${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
     const outroLines = [
       `${bold("In your AI agent")} ${dim("→")} try asking:`,
-      `  ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`,
+      `  ${cyan('"Research NVDA last 90 days, generate a momentum strategy, backtest 1y, then give me a paper-trade plan"')}`,
       "",
       `${bold("In the terminal")} ${dim("→")} e.g.`,
-      `  ${cyan(`${terminalPrefix} leaderboard --limit 10`)}`,
-      `  ${cyan(`${terminalPrefix} price AAPL`)}`,
+      `  ${cyan(`${terminalPrefix} deepagent research "…"`)}`,
+      `  ${cyan(`${terminalPrefix} deepagent health`)}`,
       `  ${cyan(`${terminalPrefix} doctor`)}`,
     ];
     if (installHint) outroLines.push("", installHint);
     outroLines.push(
       "",
-      `${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
-      `${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`,
+      `${dim("Try online")} ${cyan("https://hub.openfinclaw.ai/en/chat")}  ${dim("← no install required")}`,
+      `${dim("Docs")}       ${cyan("https://github.com/mirror29/openfinclaw-cli")}`,
+      `${dim("API Key")}    ${cyan("https://hub.openfinclaw.ai")}`,
     );
     clack.outro(outroLines.join("\n"));
   } else {
@@ -886,19 +891,20 @@ export async function runInit(argv: string[] = []): Promise<void> {
     console.log(`  ${green("✔")} ${bold(`${successCount} platform${successCount === 1 ? "" : "s"}`)} configured`);
     console.log();
     console.log(`  ${bold("In your AI agent")} ${dim("→")} try asking:`);
-    console.log(`    ${cyan('"Write me a Tesla Bollinger Bands trading strategy and run a backtest"')}`);
+    console.log(`    ${cyan('"Research NVDA last 90 days, generate a momentum strategy, backtest 1y, then give me a paper-trade plan"')}`);
     console.log();
     console.log(`  ${bold("In the terminal")} ${dim("→")} e.g.`);
-    console.log(`    ${cyan(`${terminalPrefix} leaderboard --limit 10`)}`);
-    console.log(`    ${cyan(`${terminalPrefix} price AAPL`)}`);
+    console.log(`    ${cyan(`${terminalPrefix} deepagent research "…"`)}`);
+    console.log(`    ${cyan(`${terminalPrefix} deepagent health`)}`);
     console.log(`    ${cyan(`${terminalPrefix} doctor`)}`);
     if (installHint) {
       console.log();
       console.log(`  ${installHint}`);
     }
     console.log();
-    console.log(`  ${dim("Docs")}     ${cyan("https://github.com/mirror29/openfinclaw-cli")}`);
-    console.log(`  ${dim("API Key")}  ${cyan("https://hub.openfinclaw.ai")}`);
+    console.log(`  ${dim("Try online")} ${cyan("https://hub.openfinclaw.ai/en/chat")}  ${dim("← no install required")}`);
+    console.log(`  ${dim("Docs")}       ${cyan("https://github.com/mirror29/openfinclaw-cli")}`);
+    console.log(`  ${dim("API Key")}    ${cyan("https://hub.openfinclaw.ai")}`);
     console.log();
   }
 }

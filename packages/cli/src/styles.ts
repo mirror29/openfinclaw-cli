@@ -21,7 +21,14 @@ function wrap(open: string, close = "\x1b[0m") {
     supportsColor ? `${open}${s}${close}` : String(s);
 }
 
-/** Color helpers */
+/**
+ * Color helpers.
+ *
+ * Primary brand accent is Bloomberg-amber (matches the gold gradient logo in
+ * `init.ts`). Use the `amber*` / `boldAmber` entries for section headers,
+ * dividers and branded badges. Functional colors (green/red/yellow/cyan) keep
+ * their standard semantics (success/error/warn/info).
+ */
 export const color = {
   dim: wrap("\x1b[2m"),
   bold: wrap("\x1b[1m"),
@@ -38,6 +45,12 @@ export const color = {
   boldGreen: wrap("\x1b[1;32m"),
   boldRed: wrap("\x1b[1;31m"),
   boldYellow: wrap("\x1b[1;33m"),
+  // Bloomberg-amber accent palette (Tailwind amber 200 / 400 / 500 / 700)
+  amber200: wrap("\x1b[38;2;253;230;138m"),
+  amber400: wrap("\x1b[38;2;251;191;36m"),
+  amber500: wrap("\x1b[38;2;245;158;11m"),
+  amber700: wrap("\x1b[38;2;180;83;9m"),
+  boldAmber: wrap("\x1b[1;38;2;245;158;11m"),
 };
 
 /** Unicode symbols with ASCII fallbacks */
@@ -163,22 +176,25 @@ export function trendArrow(n: number | null | undefined): string {
 }
 
 /**
- * Print a styled section header with an underline.
+ * Print a styled section header with an amber underline — keeps visual parity
+ * with the gold init banner. Functional accent colors (green/red/yellow) are
+ * unchanged; switch back to boldCyan only if a caller needs to emphasize a
+ * command name rather than a section.
  * @param title - Header text
  */
 export function header(title: string): string {
   const line = sym.hLine.repeat(Math.max(visibleWidth(title), 20));
-  return `\n  ${color.boldCyan(title)}\n  ${color.gray(line)}`;
+  return `\n  ${color.boldAmber(title)}\n  ${color.amber700(line)}`;
 }
 
 /**
- * Format a key-value row: gray label (padded), then bold/colored value.
+ * Format a key-value row: amber label (padded), then bold/colored value.
  * @param label - Left-side label
  * @param value - Right-side value (already colored if needed)
  * @param labelWidth - Visible width for label column
  */
 export function kv(label: string, value: string, labelWidth = 14): string {
-  return `  ${color.gray(padRight(label, labelWidth))} ${value}`;
+  return `  ${color.amber400(padRight(label, labelWidth))} ${value}`;
 }
 
 /** Success line: green check + message */
