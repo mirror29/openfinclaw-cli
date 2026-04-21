@@ -2,16 +2,13 @@
 
 **[English](README.md)** | **[中文](README.zh-CN.md)**
 
-# OpenFinClaw
+<img src="imgs/logo.svg" alt="OpenFinClaw" width="680">
 
-**跨平台 AI Agent 金融工具**
+**给 Claude Code / Cursor / 20+ AI Agent 插上金融大脑 — 实时行情 + AI 回测，基于 MCP**
 
-[![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![npm downloads](https://img.shields.io/npm/dw/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![MCP compatible](https://img.shields.io/badge/MCP-compatible-8A2BE2)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-一个包，20+ Agent 平台，零锁定。
-
-[获取 API Key](https://hub.openfinclaw.ai) | [使用文档](#快速开始) | [支持的平台](#支持的平台)
+[获取 API Key](https://hub.openfinclaw.ai) · [快速开始](#快速开始) · [支持的平台](#支持的平台) · [DeepAgent 演示](#方式四deepagent可选远端-ai-研究--策略生成)
 
 </div>
 
@@ -21,12 +18,19 @@
 
 OpenFinClaw 是一个**通用金融工具包**，通过 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 协议与任何 AI Agent 平台对接。提供行情数据与策略管理 — 可从 Claude Code、Hermes、Cursor、VS Code Copilot 等 20+ 平台访问。
 
+<p align="center">
+  <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent 回测结果 — 特斯拉布林带" width="620">
+  <br/>
+  <sub><em><code>openfinclaw deepagent research</code> 真实输出——特斯拉布林带策略，研究 → 回测 → 绩效指标，一句 Prompt 完成。</em></sub>
+</p>
+
 ### 功能一览
 
 | 分类 | 工具 | 说明 |
 |------|------|------|
 | **行情数据** | `fin_price` `fin_kline` `fin_crypto` `fin_compare` `fin_slim_search` | 实时价格、K线/OHLCV、加密货币/DeFi 数据、多资产对比、代码搜索 |
 | **策略管理** | `skill_publish` `skill_validate` `skill_fork` `skill_leaderboard` `skill_get_info` `skill_list_local` `skill_publish_verify` | 发布策略到 Hub、验证 FEP v2.0 包、Fork 公开策略、排行榜查询 |
+| **DeepAgent** | `fin_deepagent_research_*` `fin_deepagent_backtests` `fin_deepagent_packages` `fin_deepagent_download_package` … | 远端 AI 研究 / 回测 / 策略生成（独立 DeepAgent Key） |
 
 ---
 
@@ -67,31 +71,93 @@ npx @openfinclaw/cli init
 
 ### 方式三：命令行直接使用
 
-```bash
-# 方式 A：已通过 init 写入 ~/.openfinclaw/config.json（推荐）
+**第 1 步 — 安装（二选一）**
 
-# 方式 B：当前 shell 会话设置环境变量
+```bash
+# 选项 A（推荐）：全局安装，终端直接用 `openfinclaw` 短命令
+npm install -g @openfinclaw/cli      # 或：pnpm add -g @openfinclaw/cli
+
+# 选项 B：不装，每条命令前加 `npx -y @openfinclaw/cli`
+#   （首次运行会慢，要下载包）
+```
+
+下面示例都用短命令 `openfinclaw <cmd>`。如果你选了 B，把它替换成 `npx -y @openfinclaw/cli <cmd>` 即可。
+
+**第 2 步 — 提供 API Key（三选一）**
+
+```bash
+# A. 跑一次 init 向导（写入 ~/.openfinclaw/config.json，Unix 下权限 600）
+openfinclaw init
+
+# B. 当前 shell 会话 export
 export OPENFINCLAW_API_KEY=fch_你的密钥
 
-# 方式 C：单次命令传入
-npx @openfinclaw/cli price AAPL --api-key fch_你的密钥
+# C. 单次命令行内传入
+openfinclaw price AAPL --api-key fch_你的密钥
+```
 
-# 查询价格
-npx @openfinclaw/cli price AAPL
-npx @openfinclaw/cli price BTC/USDT
+**第 3 步 — 执行命令**
 
-# 获取 K 线数据
-npx @openfinclaw/cli kline 600519.SH --limit 30
+```bash
+# 实时行情（股票 / 加密 / 指数）
+openfinclaw price AAPL
+openfinclaw price BTC/USDT
+
+# K 线 / OHLCV
+openfinclaw kline 600519.SH --limit 30
 
 # 多资产对比
-npx @openfinclaw/cli compare AAPL,GOOGL,MSFT,AMZN
+openfinclaw compare AAPL,GOOGL,MSFT,AMZN
 
-# 搜索代码
-npx @openfinclaw/cli search "茅台"
+# 代码搜索
+openfinclaw search "茅台"
 
-# 诊断配置
-npx @openfinclaw/cli doctor
+# 排行榜
+openfinclaw leaderboard --limit 10
+
+# 诊断配置与连通性
+openfinclaw doctor
+
+# 升级到最新版本
+openfinclaw update
 ```
+
+**完整 CLI 命令清单**
+
+| 分组 | 命令 |
+|------|------|
+| 行情数据 | `price`、`kline`、`crypto`、`compare`、`search` |
+| 策略管理 | `leaderboard`、`strategy-info`、`fork`、`list-strategies`、`validate`、`publish`、`publish-verify` |
+| DeepAgent | `deepagent health`、`deepagent skills`、`deepagent research`、`deepagent threads`、`deepagent messages`、`deepagent backtests`、`deepagent packages`、`deepagent download` |
+| 系统 | `init`、`serve`、`doctor`、`update` |
+
+运行 `openfinclaw --help` 查看完整用法与选项。
+
+### 方式四：DeepAgent（可选，远端 AI 研究 / 策略生成）
+
+DeepAgent 是**独立服务，使用独立的 API Key**（`OPENFINCLAW_DEEPAGENT_API_KEY`）。执行 `deepagent *` 或 `doctor` **不需要** Hub Key：
+
+```bash
+# 保存 Key（也可单次用 --deepagent-api-key 传入）
+export OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>
+
+# 终端流式研究（token-by-token 输出）
+openfinclaw deepagent research "帮我写一个特斯拉布林带策略并跑回测"
+
+# 查看历史任务
+openfinclaw deepagent backtests
+openfinclaw deepagent packages
+openfinclaw deepagent download <packageId>
+```
+
+`openfinclaw init` 可一次性保存 Hub + DeepAgent 两把 Key 到 `~/.openfinclaw/config.json`。DeepAgent Key 通过 Hub 后台申请。
+
+**演示效果** —— 一句 Prompt 即可产出策略定义、回测指标、逐笔交易 P&L 与优化建议：
+
+<p align="center">
+  <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent — 策略定义与绩效指标" width="49%" />
+  <img src="imgs/deepagent-backtest-trades.png" alt="DeepAgent — 交易明细、结论与优化建议" width="49%" />
+</p>
 
 ---
 

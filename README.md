@@ -2,16 +2,13 @@
 
 **[English](README.md)** | **[中文](README.zh-CN.md)**
 
-# OpenFinClaw
+<img src="imgs/logo.svg" alt="OpenFinClaw" width="680">
 
-**Cross-platform financial tools for AI agents**
+**Real-time market data + AI backtests for Claude Code, Cursor & 20+ AI agents — via MCP**
 
-[![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![npm downloads](https://img.shields.io/npm/dw/@openfinclaw/cli)](https://www.npmjs.com/package/@openfinclaw/cli) [![MCP compatible](https://img.shields.io/badge/MCP-compatible-8A2BE2)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-One package. 20+ agent platforms. Zero lock-in.
-
-[Get your API Key](https://hub.openfinclaw.ai) | [Documentation](#quick-start) | [Supported Platforms](#supported-platforms)
+[Get API Key](https://hub.openfinclaw.ai) · [Quick Start](#quick-start) · [Platforms](#supported-platforms) · [DeepAgent Demo](#4-deepagent-optional--remote-ai-research--strategy-generation)
 
 </div>
 
@@ -20,6 +17,12 @@ One package. 20+ agent platforms. Zero lock-in.
 ## What is OpenFinClaw?
 
 OpenFinClaw is a **universal financial toolkit** that works with any AI agent platform via [MCP (Model Context Protocol)](https://modelcontextprotocol.io). It provides market data and strategy management — accessible from Claude Code, Hermes, Cursor, VS Code Copilot, and 20+ other platforms.
+
+<p align="center">
+  <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent backtest result — Tesla Bollinger Bands" width="620">
+  <br/>
+  <sub><em>Live output from <code>openfinclaw deepagent research</code> — Tesla Bollinger-Bands strategy, research → backtest → metrics, from one prompt.</em></sub>
+</p>
 
 ### Key Features
 
@@ -68,46 +71,67 @@ Add to your agent platform's MCP config:
 
 ### 3. CLI Mode (Human Use)
 
-**Install once, then call `openfinclaw` directly** (recommended for terminal use):
+**Step 1 — Install (choose one)**
 
 ```bash
-# Install globally so the bare `openfinclaw` command works in any terminal
+# Option A (recommended): install globally, use the short `openfinclaw` command everywhere
 npm install -g @openfinclaw/cli      # or: pnpm add -g @openfinclaw/cli
 
-# Now you can use the short form everywhere
-openfinclaw leaderboard --limit 10
-openfinclaw price AAPL
-openfinclaw doctor
+# Option B: no install — prefix every command with `npx -y @openfinclaw/cli`
+#   (slower first run while the package is fetched)
 ```
 
-If you prefer not to install globally, every command below also runs via `npx -y @openfinclaw/cli <cmd>` (slower first run while the package is fetched).
+All examples below use the short `openfinclaw <cmd>` form. If you chose Option B, replace it with `npx -y @openfinclaw/cli <cmd>`.
+
+**Step 2 — Provide your API key (choose one)**
 
 ```bash
-# Option A: use key from init (writes ~/.openfinclaw/config.json)
-npx @openfinclaw/cli init
+# A. Run the init wizard once (writes ~/.openfinclaw/config.json, mode 600)
+openfinclaw init
 
-# Option B: set environment variable for this session
+# B. Export for the current shell session
 export OPENFINCLAW_API_KEY=fch_your_key_here
 
-# Option C: pass API key for a single command (optional)
-openfinclaw compare AAPL,MSFT --api-key fch_your_key_here
+# C. Pass it inline per command
+openfinclaw price AAPL --api-key fch_your_key_here
+```
 
-# Query prices
+**Step 3 — Run commands**
+
+```bash
+# Real-time quotes (stocks / crypto / indices)
 openfinclaw price AAPL
 openfinclaw price BTC/USDT
 
-# Get K-line data
+# K-line / OHLCV
 openfinclaw kline 600519.SH --limit 30
 
-# Compare assets
+# Multi-asset comparison
 openfinclaw compare AAPL,GOOGL,MSFT,AMZN
 
-# Search symbols
+# Symbol search
 openfinclaw search "tesla"
 
-# Diagnose configuration
+# Leaderboard
+openfinclaw leaderboard --limit 10
+
+# Diagnose config & connectivity
 openfinclaw doctor
+
+# Upgrade to the latest version
+openfinclaw update
 ```
+
+**All CLI commands**
+
+| Group | Commands |
+|-------|----------|
+| Market data | `price`, `kline`, `crypto`, `compare`, `search` |
+| Strategy | `leaderboard`, `strategy-info`, `fork`, `list-strategies`, `validate`, `publish`, `publish-verify` |
+| DeepAgent | `deepagent health`, `deepagent skills`, `deepagent research`, `deepagent threads`, `deepagent messages`, `deepagent backtests`, `deepagent packages`, `deepagent download` |
+| System | `init`, `serve`, `doctor`, `update` |
+
+Run `openfinclaw --help` for full usage and options.
 
 ### 4. DeepAgent (Optional — remote AI research & strategy generation)
 
@@ -127,6 +151,13 @@ npx @openfinclaw/cli deepagent download <packageId>
 ```
 
 `openfinclaw init` can save both keys at once (Hub + DeepAgent) to `~/.openfinclaw/config.json`. Request a DeepAgent key via the Hub dashboard.
+
+**Sample output** — one prompt produces strategy definition, backtest metrics, trade-level P&L, and improvement suggestions:
+
+<p align="center">
+  <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent — strategy definition & performance metrics" width="49%" />
+  <img src="imgs/deepagent-backtest-trades.png" alt="DeepAgent — trades, conclusions & optimization suggestions" width="49%" />
+</p>
 
 ---
 

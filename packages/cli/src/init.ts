@@ -103,12 +103,21 @@ const COMPACT_BANNER_LINES: readonly string[] = [
 const COMPACT_BANNER_WIDTH = 58;
 
 /**
- * Apply a vertical magenta→cyan gradient to ASCII-art rows.
+ * Apply a vertical Bloomberg-amber gradient (pale gold → deep bronze) to ASCII-art rows.
+ * Uses 24-bit truecolor (38;2;R;G;B) so palette maps exactly to README SVG fills:
+ * #fde68a → #fcd34d → #fbbf24 → #f59e0b → #d97706 → #92400e (Tailwind amber 200–800).
  * @param lines - Raw ASCII lines, one per row
  */
 function gradientLines(lines: readonly string[]): string[] {
-  const palette = ["38;5;213", "38;5;207", "38;5;177", "38;5;141", "38;5;111", "38;5;75"];
-  return lines.map((line, i) => sgr(palette[i] ?? "35", line));
+  const palette = [
+    "38;2;253;230;138",
+    "38;2;252;211;77",
+    "38;2;251;191;36",
+    "38;2;245;158;11",
+    "38;2;217;119;6",
+    "38;2;146;64;14",
+  ];
+  return lines.map((line, i) => sgr(palette[i] ?? "33", line));
 }
 
 /**
