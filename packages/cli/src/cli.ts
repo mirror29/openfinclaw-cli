@@ -5,6 +5,7 @@
 import {
   resolveOpenFinClawConfig,
   getUserConfigFilePath,
+  DEFAULT_DEEPAGENT_API_URL,
   executeSkillLeaderboard,
   executeSkillGetInfo,
   executeSkillFork,
@@ -130,10 +131,11 @@ export async function runCli(command: string, args: string[]) {
   const apiKeyOpt = flags["api-key"];
 
   /**
-   * DeepAgent is a separately-authenticated service (its own X-API-Key).
-   * `doctor` needs to inspect both keys. Both must work without a Hub key.
+   * `doctor` should still render diagnostics when no key is set.
+   * Other subcommands (including `deepagent`) require a fch_ key — Gateway
+   * 在前置链路统一鉴权，缺 key 直接 401。
    */
-  const allowMissingApiKey = command === "deepagent" || command === "doctor";
+  const allowMissingApiKey = command === "doctor";
 
   let config;
   try {
@@ -146,7 +148,7 @@ export async function runCli(command: string, args: string[]) {
         failure({
           what: "API key not configured",
           why: raw,
-          fix: "Run `openfinclaw init` to save keys, or export OPENFINCLAW_API_KEY / OPENFINCLAW_DEEPAGENT_API_KEY",
+          fix: "Run `openfinclaw init` to save it, or export OPENFINCLAW_API_KEY",
         }),
       );
     } else {
@@ -430,11 +432,7 @@ export async function runCli(command: string, args: string[]) {
         const apiMark = config.apiKey
           ? color.green(sym.check) + " " + color.gray(`${config.apiKey.slice(0, 8)}…`)
           : color.red(sym.cross) + " " + color.red("not configured");
-        console.log(kv("Hub Key", apiMark));
-        const dpMark = config.deepagentApiKey
-          ? color.green(sym.check) + " " + color.gray(`${config.deepagentApiKey.slice(0, 8)}…`)
-          : color.gray(sym.dot + " not configured (auth-gated deepagent tools will be disabled)");
-        console.log(kv("DeepAgent Key", dpMark));
+        console.log(kv("API Key", apiMark + color.gray("  (drives both Hub & DeepAgent)")));
         console.log(kv("Config", color.gray(getUserConfigFilePath())));
         console.log(kv("Hub URL", color.cyan(config.hubApiUrl)));
         if (config.deepagentApiUrl)
@@ -561,10 +559,10 @@ async function runDeepagentSubcommand(
         console.error(errorLine("Usage: openfinclaw deepagent research \"<query>\" [--thread-id <id>]"));
         process.exit(1);
       }
-      if (!config.deepagentApiKey) {
+      if (!config.apiKey) {
         console.error(
           errorLine(
-            "DeepAgent API key not configured. Run `openfinclaw init` or set OPENFINCLAW_DEEPAGENT_API_KEY.",
+            "API key not configured. Run `openfinclaw init` or set OPENFINCLAW_API_KEY.",
           ),
         );
         process.exit(1);
@@ -813,11 +811,8 @@ async function streamResearch(
     }
   }
 
-  const baseUrl = (config.deepagentApiUrl ?? "https://api.openfinclaw.ai/agent").replace(
-    /\/+$/,
-    "",
-  );
-  const url = `${baseUrl}/api/threads/${threadId}/runs`;
+  const baseUrl = (config.deepagentApiUrl ?? DEFAULT_DEEPAGENT_API_URL).replace(/\/+$/, "");
+  const url = `${baseUrl}/threads/${threadId}/runs`;
 
   console.log(header(`DeepAgent Research`));
   console.log(kv("Thread", color.gray(threadId)));
@@ -828,7 +823,7 @@ async function streamResearch(
   const resp = await fetch(url, {
     method: "POST",
     headers: {
-      "X-API-Key": config.deepagentApiKey ?? "",
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
       Accept: "text/event-stream",
     },

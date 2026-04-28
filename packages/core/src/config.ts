@@ -9,14 +9,22 @@ import { join } from "node:path";
 
 /** Default URLs */
 export const DEFAULT_HUB_API_URL = "https://hub.openfinclaw.ai";
-export const DEFAULT_DEEPAGENT_API_URL = "https://api.openfinclaw.ai/agent";
+/**
+ * Default DeepAgent base URL — Hub Gateway. APISIX 在该路径前置 fch_ key 鉴权 +
+ * 多租户隔离 + URL rewrite 后转给 DeepAgent 后端。完整路径形如
+ * `https://gateway.openfinclaw.ai/api/v1/agent/threads`。
+ */
+export const DEFAULT_DEEPAGENT_API_URL = "https://gateway.openfinclaw.ai/api/v1/agent";
 export const DEFAULT_TIMEOUT_MS = 60_000;
 /** Default SSE timeout for long-running DeepAgent research (15 min) */
 export const DEFAULT_SSE_TIMEOUT_MS = 900_000;
 
 /** Core configuration interface */
 export interface OpenFinClawConfig {
-  /** API Key for Hub (fch_ prefix) */
+  /**
+   * Unified API Key (fch_ prefix). Drives both Hub (`/api/v1/skill/*`) and
+   * DeepAgent (`/api/v1/agent/*` via Gateway).
+   */
   apiKey: string;
   /** Hub API URL */
   hubApiUrl: string;
@@ -25,17 +33,10 @@ export interface OpenFinClawConfig {
   /** Optional local workspace database path (`OPENFINCLAW_DB_PATH`) */
   dbPath?: string;
   /**
-   * DeepAgent API base URL. Optional — when `deepagentApiKey` is set, defaults to
-   * {@link DEFAULT_DEEPAGENT_API_URL}. Override via `DEEPAGENT_API_URL`.
+   * DeepAgent API base URL. Defaults to {@link DEFAULT_DEEPAGENT_API_URL}.
+   * Override via `DEEPAGENT_API_URL` (e.g. staging gateway).
    */
   deepagentApiUrl?: string;
-  /**
-   * DeepAgent API Key (independent from Hub `fch_` key). When undefined,
-   * DeepAgent tools that require authentication will return a friendly error.
-   * Resolved from: `--deepagent-api-key` > `OPENFINCLAW_DEEPAGENT_API_KEY` >
-   * `FINDOO_DEEPAGENT_API_KEY` > `deepagentApiKey` in user config file.
-   */
-  deepagentApiKey?: string;
   /** SSE timeout for long-running DeepAgent streams (default 15 min) */
   deepagentSseTimeoutMs?: number;
 }
@@ -47,17 +48,11 @@ export interface ResolveOpenFinClawConfigOptions {
    */
   apiKey?: string;
   /**
-   * Explicit DeepAgent API key (e.g. CLI `--deepagent-api-key`). Highest priority.
-   */
-  deepagentApiKey?: string;
-  /**
    * When true, return a config with `apiKey: ""` instead of throwing if no
-   * Hub key can be resolved. Used by paths that only talk to DeepAgent (a
-   * separately-authenticated service with its own key), so a user who set
-   * only `OPENFINCLAW_DEEPAGENT_API_KEY` can still run `deepagent *` and
-   * `doctor` commands.
+   * key can be resolved. Used by `doctor` so it can render a "key missing"
+   * diagnostic instead of crashing on resolution.
    *
-   * Callers must still check `config.apiKey` before hitting Hub.
+   * Callers must still check `config.apiKey` before hitting Hub / DeepAgent.
    */
   allowMissingApiKey?: boolean;
 }
@@ -78,7 +73,6 @@ export function getUserConfigFilePath(): string {
 /** Shape of the user config file on disk. */
 interface UserConfigFile {
   apiKey?: string;
-  deepagentApiKey?: string;
 }
 
 /**
@@ -91,10 +85,6 @@ function readUserConfigFile(filePath: string): UserConfigFile {
     const data = JSON.parse(raw) as UserConfigFile;
     return {
       apiKey: typeof data.apiKey === "string" ? data.apiKey.trim() || undefined : undefined,
-      deepagentApiKey:
-        typeof data.deepagentApiKey === "string"
-          ? data.deepagentApiKey.trim() || undefined
-          : undefined,
     };
   } catch {
     return {};
@@ -109,33 +99,7 @@ export function readApiKeyFromConfigFile(filePath: string): string | undefined {
   return readUserConfigFile(filePath).apiKey;
 }
 
-/**
- * Resolve the DeepAgent API key (if any) with priority:
- * 1. `options.deepagentApiKey` (CLI flag)
- * 2. `OPENFINCLAW_DEEPAGENT_API_KEY`
- * 3. `FINDOO_DEEPAGENT_API_KEY` (legacy env from findoo-deepagent-plugin)
- * 4. `deepagentApiKey` in user config file
- * Returns `undefined` when not configured — not an error.
- * @param options - Optional explicit key
- */
-export function resolveDeepAgentApiKey(
-  options: ResolveOpenFinClawConfigOptions = {},
-): string | undefined {
-  const fromOpt = options.deepagentApiKey?.trim();
-  if (fromOpt) return fromOpt;
-  const fromEnv =
-    process.env.OPENFINCLAW_DEEPAGENT_API_KEY?.trim() ||
-    process.env.FINDOO_DEEPAGENT_API_KEY?.trim();
-  if (fromEnv) return fromEnv;
-  const fromFile = readUserConfigFile(getUserConfigFilePath()).deepagentApiKey;
-  if (fromFile) return fromFile;
-  return undefined;
-}
-
-function buildConfigFromApiKey(
-  apiKey: string,
-  options: ResolveOpenFinClawConfigOptions = {},
-): OpenFinClawConfig {
+function buildConfigFromApiKey(apiKey: string): OpenFinClawConfig {
   return {
     apiKey,
     hubApiUrl: (process.env.HUB_API_URL?.trim() || DEFAULT_HUB_API_URL).replace(/\/+$/, ""),
@@ -147,7 +111,6 @@ function buildConfigFromApiKey(
     deepagentApiUrl: (
       process.env.DEEPAGENT_API_URL?.trim() || DEFAULT_DEEPAGENT_API_URL
     ).replace(/\/+$/, ""),
-    deepagentApiKey: resolveDeepAgentApiKey(options),
     deepagentSseTimeoutMs: Math.max(
       60_000,
       Math.min(
@@ -169,21 +132,21 @@ function buildConfigFromApiKey(
 export function resolveOpenFinClawConfig(options: ResolveOpenFinClawConfigOptions = {}): OpenFinClawConfig {
   const fromOpt = options.apiKey?.trim();
   if (fromOpt) {
-    return buildConfigFromApiKey(fromOpt, options);
+    return buildConfigFromApiKey(fromOpt);
   }
 
   const fromEnv = process.env.OPENFINCLAW_API_KEY?.trim();
   if (fromEnv) {
-    return buildConfigFromApiKey(fromEnv, options);
+    return buildConfigFromApiKey(fromEnv);
   }
 
   const fromFile = readApiKeyFromConfigFile(getUserConfigFilePath());
   if (fromFile) {
-    return buildConfigFromApiKey(fromFile, options);
+    return buildConfigFromApiKey(fromFile);
   }
 
   if (options.allowMissingApiKey) {
-    return buildConfigFromApiKey("", options);
+    return buildConfigFromApiKey("");
   }
 
   throw new Error(

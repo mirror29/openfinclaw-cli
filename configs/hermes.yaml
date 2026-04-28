@@ -4,4 +4,3 @@ mcp_servers:
     args: ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"]
     env:
       OPENFINCLAW_API_KEY: "fch_your_key_here"
-      OPENFINCLAW_DEEPAGENT_API_KEY: "your_deepagent_key_here"

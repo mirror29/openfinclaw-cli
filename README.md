@@ -82,7 +82,7 @@ The wizard will:
 - Write MCP config to each selected platform
 - Save `~/.openfinclaw/config.json` so terminal CLI works without `export` (Unix: file mode 600)
 
-**CLI vs MCP:** Agent platforms load the API key from their MCP `env` block. That does **not** change your shell profile. A shell `OPENFINCLAW_API_KEY` / `OPENFINCLAW_DEEPAGENT_API_KEY` is still visible to any process you start in that terminal—this is normal. Resolution order for `openfinclaw` / `serve` is: CLI flag → env var → `~/.openfinclaw/config.json`.
+**CLI vs MCP:** Agent platforms load the API key from their MCP `env` block. That does **not** change your shell profile. A shell `OPENFINCLAW_API_KEY` is still visible to any process you start in that terminal — this is normal. Resolution order for `openfinclaw` / `serve` is: CLI flag → env var → `~/.openfinclaw/config.json`.
 
 ### 2. Manual Configuration
 
@@ -95,7 +95,6 @@ Add to your agent platform's MCP config:
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve"],
       "env": {
-        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key_here",
         "OPENFINCLAW_API_KEY": "fch_your_key_here"
       }
     }
@@ -103,7 +102,7 @@ Add to your agent platform's MCP config:
 }
 ```
 
-Omit whichever key you don't need — DeepAgent and Hub are independently authenticated.
+A single `fch_` key drives both DeepAgent (via Hub Gateway) and the strategy group — no separate DeepAgent key needed.
 
 ### 3. CLI Mode (Human Use)
 
@@ -126,11 +125,10 @@ All examples below use the short `openfinclaw <cmd>` form. If you chose Option B
 openfinclaw init
 
 # B. Export for the current shell session
-export OPENFINCLAW_DEEPAGENT_API_KEY=your_deepagent_key_here
-export OPENFINCLAW_API_KEY=fch_your_key_here   # only needed for strategy group
+export OPENFINCLAW_API_KEY=fch_your_key_here   # drives both deepagent & strategy
 
 # C. Pass it inline per command
-openfinclaw deepagent research "..." --deepagent-api-key your_key
+openfinclaw deepagent research "..." --api-key fch_your_key_here
 ```
 
 **Step 3 — Run commands**
@@ -169,17 +167,17 @@ Run `openfinclaw --help` for full usage and options.
 
 ### 4. DeepAgent in depth
 
-DeepAgent has its **own API key** (`OPENFINCLAW_DEEPAGENT_API_KEY`). You do **not** need a Hub key to use `deepagent *` or `doctor`:
+DeepAgent shares the same `fch_` key as the strategy group — traffic is routed through the Hub Gateway, which validates the key and forwards the request to the DeepAgent backend.
 
 ```bash
-# Save the key (or pass it inline with --deepagent-api-key)
-export OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>
+# Save the key (or pass it inline with --api-key)
+export OPENFINCLAW_API_KEY=fch_your_key_here
 
 # Streaming research in the terminal (token-by-token)
 openfinclaw deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
 ```
 
-`openfinclaw init` can save both keys at once (Hub + DeepAgent) to `~/.openfinclaw/config.json`. Request a DeepAgent key via the Hub dashboard, or trial the service online at <https://hub.openfinclaw.ai/en/chat>.
+`openfinclaw init` writes the unified key to `~/.openfinclaw/config.json`. Request a key on the Hub dashboard, or trial the service online at <https://hub.openfinclaw.ai/en/chat>.
 
 **Sample output** — one prompt produces strategy definition, backtest metrics, trade-level P&L, and improvement suggestions:
 
@@ -233,7 +231,6 @@ OpenFinClaw works with any MCP-compatible agent platform:
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
       "env": {
-        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
         "OPENFINCLAW_API_KEY": "fch_xxx"
       }
     }
@@ -252,7 +249,6 @@ OpenFinClaw works with any MCP-compatible agent platform:
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
       "env": {
-        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
         "OPENFINCLAW_API_KEY": "fch_xxx"
       }
     }
@@ -271,7 +267,6 @@ OpenFinClaw works with any MCP-compatible agent platform:
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
       "env": {
-        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
         "OPENFINCLAW_API_KEY": "fch_xxx"
       }
     }
@@ -289,7 +284,6 @@ mcp_servers:
     command: "npx"
     args: ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"]
     env:
-      OPENFINCLAW_DEEPAGENT_API_KEY: "your_deepagent_key"
       OPENFINCLAW_API_KEY: "fch_xxx"
 ```
 </details>
@@ -305,7 +299,6 @@ Add OpenFinClaw to your MCP config (e.g. `~/.openclaw/mcp.json`):
       "command": "npx",
       "args": ["@openfinclaw/cli", "serve"],
       "env": {
-        "OPENFINCLAW_DEEPAGENT_API_KEY": "your_deepagent_key",
         "OPENFINCLAW_API_KEY": "fch_xxx"
       }
     }
@@ -372,15 +365,14 @@ The project is a monorepo with two packages:
 
 | Variable | Required | Description | Default |
 |----------|----------|-------------|---------|
-| `OPENFINCLAW_DEEPAGENT_API_KEY` | For DeepAgent tools | DeepAgent service key (distinct from the Hub `fch_` key; sent as `X-API-Key`). Falls back to `~/.openfinclaw/config.json`. | — |
-| `OPENFINCLAW_API_KEY` | For strategy group | Hub API key (`fch_` prefix). Needed only for the strategy group; not needed for `deepagent *` or `doctor`. | — |
-| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "...", "deepagentApiKey": "..." }` | `~/.openfinclaw/config.json` |
+| `OPENFINCLAW_API_KEY` | Yes | Unified `fch_` API key — drives both strategy (Hub) and deepagent (Hub Gateway). Falls back to `~/.openfinclaw/config.json`. | — |
+| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "fch_..." }` | `~/.openfinclaw/config.json` |
 | `HUB_API_URL` | No | Hub API URL | `https://hub.openfinclaw.ai` |
-| `DEEPAGENT_API_URL` | No | DeepAgent API URL | `https://api.openfinclaw.ai/agent` |
+| `DEEPAGENT_API_URL` | No | DeepAgent API URL (Hub Gateway) | `https://gateway.openfinclaw.ai/api/v1/agent` |
 | `REQUEST_TIMEOUT_MS` | No | HTTP request timeout (ms) | `60000` |
 | `DEEPAGENT_SSE_TIMEOUT_MS` | No | DeepAgent SSE stream timeout (ms) | `900000` |
 
-Get your Hub API key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai). Request a DeepAgent key on the same dashboard, or try DeepAgent online first at <https://hub.openfinclaw.ai/en/chat>. The **Hub key and the DeepAgent key are independent** — having one does not grant access to the other.
+Get your API key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai), or try DeepAgent online first at <https://hub.openfinclaw.ai/en/chat>.
 
 ---
 
@@ -396,10 +388,10 @@ pnpm install
 pnpm build
 
 # Run CLI locally
-OPENFINCLAW_DEEPAGENT_API_KEY=<key> node packages/cli/dist/index.js deepagent health
+OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js deepagent health
 
 # Run MCP server locally
-OPENFINCLAW_DEEPAGENT_API_KEY=<key> node packages/cli/dist/index.js serve
+OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js serve
 ```
 
 ---

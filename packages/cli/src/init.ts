@@ -426,17 +426,15 @@ function selectDetectedPlatforms(states: Map<string, PlatformDetectInfo>): Set<s
 /**
  * Build the MCP entry stanza (command + args + env).
  * @param toolGroups - Selected tool groups (strategy / deepagent)
- * @param apiKey - Hub API key (fch_...)
- * @param deepagentApiKey - Optional DeepAgent API key (raw, no prefix)
+ * @param apiKey - Unified API key (fch_...) — drives both Hub and DeepAgent via Gateway
  */
-function buildMcpEntry(toolGroups: string[], apiKey: string, deepagentApiKey?: string) {
+function buildMcpEntry(toolGroups: string[], apiKey: string) {
   const args = ["@openfinclaw/cli", "serve"];
   /** When all groups are selected, omit --tools (same as serve default). */
   if (toolGroups.length > 0 && toolGroups.length < TOOL_GROUP_CHOICES.length) {
     args.push(`--tools=${toolGroups.join(",")}`);
   }
   const env: Record<string, string> = { OPENFINCLAW_API_KEY: apiKey };
-  if (deepagentApiKey) env.OPENFINCLAW_DEEPAGENT_API_KEY = deepagentApiKey;
   return { command: "npx", args, env };
 }
 
@@ -516,13 +514,15 @@ function writeYamlConfig(
 }
 
 /**
- * Persist API key(s) to `~/.openfinclaw/config.json` so terminal `openfinclaw`
+ * Persist the API key to `~/.openfinclaw/config.json` so terminal `openfinclaw`
  * works without `export`. Unix: chmod 600 on the file.
- * @param apiKey - Hub API key (fch_...)
- * @param deepagentApiKey - Optional DeepAgent API key
+ *
+ * 同时清理掉历史遗留的 `deepagentApiKey` 字段，避免老用户升级后误以为还要分两把。
+ *
+ * @param apiKey - Unified API key (fch_...)
  * @returns Written file path
  */
-function writeUserConfigFile(apiKey: string, deepagentApiKey?: string): string {
+function writeUserConfigFile(apiKey: string): string {
   const fullPath = getUserConfigFilePath();
   mkdirSync(dirname(fullPath), { recursive: true });
 
@@ -535,9 +535,7 @@ function writeUserConfigFile(apiKey: string, deepagentApiKey?: string): string {
     }
   }
   existing.apiKey = apiKey;
-  if (deepagentApiKey) {
-    existing.deepagentApiKey = deepagentApiKey;
-  }
+  delete existing.deepagentApiKey;
 
   writeFileSync(fullPath, JSON.stringify(existing, null, 2) + "\n", "utf-8");
   if (process.platform !== "win32") {
@@ -654,7 +652,6 @@ interface InitFlags {
   platforms?: string[];
   toolGroups?: string[];
   apiKey?: string;
-  deepagentApiKey?: string;
   forceFallback: boolean;
   help: boolean;
 }
@@ -708,11 +705,6 @@ function parseInitFlags(argv: string[]): InitFlags {
         if (v) out.apiKey = v;
         break;
       }
-      case "deepagent-api-key": {
-        const v = take();
-        if (v) out.deepagentApiKey = v;
-        break;
-      }
       default:
         break;
     }
@@ -732,14 +724,13 @@ function printInitHelp(): void {
     `    --yes, -y                      Skip every confirmation that can be skipped`,
     `    --platforms <a,b,c>            Target platforms (e.g. cursor,claude-code)`,
     `    --tool-groups <a,b,c>          Tool groups (deepagent / strategy)`,
-    `    --api-key <fch_...>            Hub API key (needed for strategy group)`,
-    `    --deepagent-api-key <key>      DeepAgent API key (needed for deepagent group)`,
+    `    --api-key <fch_...>            Unified API key (drives both strategy & deepagent)`,
     `    --non-interactive              Force line-input mode (bypass clack)`,
     "",
     `  ${bold("Example")}`,
     `    openfinclaw init --yes --platforms cursor,claude-code \\`,
     `                     --tool-groups deepagent,strategy \\`,
-    `                     --api-key fch_xxx --deepagent-api-key <key>`,
+    `                     --api-key fch_xxx`,
     "",
   ];
   console.log(lines.join("\n"));
@@ -814,14 +805,8 @@ export async function runInit(argv: string[] = []): Promise<void> {
     process.exit(0);
   }
 
-  // ── Step 3.5: DeepAgent key (optional) ──
-  let deepagentKey: string | undefined;
-  if (selectedGroups.includes("deepagent")) {
-    deepagentKey = await resolveDeepagentKey(flags, clack);
-  }
-
   // ── Step 4: Write configs ──
-  const entry = buildMcpEntry(selectedGroups, hubKey, deepagentKey);
+  const entry = buildMcpEntry(selectedGroups, hubKey);
   let successCount = 0;
 
   printStep(clack, "Step 4", "Writing config files");
@@ -845,7 +830,7 @@ export async function runInit(argv: string[] = []): Promise<void> {
   }
 
   try {
-    const userConfigPath = writeUserConfigFile(hubKey, deepagentKey);
+    const userConfigPath = writeUserConfigFile(hubKey);
     printSuccess(
       clack,
       `${bold("CLI config saved")}  ${dim("→")}  ${cyan(userConfigPath)} ${dim("(run `openfinclaw` directly — no export needed)")}`,
@@ -1048,38 +1033,6 @@ async function resolveApiKey(
     }
   }
   return key;
-}
-
-async function resolveDeepagentKey(
-  flags: InitFlags,
-  clack: typeof import("@clack/prompts") | undefined,
-): Promise<string | undefined> {
-  if (flags.deepagentApiKey) return flags.deepagentApiKey.trim();
-  if (flags.yes) return undefined;
-
-  printStep(clack, "Step 3.5", `DeepAgent API key ${dim("(optional · unlocks AI research & strategy gen)")}`);
-  printInfo(clack, dim("DeepAgent is a separate service with its own API key."));
-
-  let dp: string | undefined;
-  if (clack) {
-    const result = await clack.password({
-      message: dim("Paste your DeepAgent API key (enter to skip)"),
-    });
-    if (clack.isCancel(result)) process.exit(0);
-    dp = (result as string).trim();
-  } else {
-    dp = await secretFallback(dim("DeepAgent API key (enter to skip):"));
-  }
-
-  if (dp && dp.length > 0) {
-    printSuccess(clack, `${green("✔")} DeepAgent key accepted`);
-    return dp;
-  }
-  printInfo(
-    clack,
-    dim("Skipped — only fin_deepagent_health / fin_deepagent_skills remain usable; other deepagent tools will prompt to configure a key."),
-  );
-  return undefined;
 }
 
 async function confirmYesNo(

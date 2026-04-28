@@ -27,12 +27,12 @@ Node 18+ (ESM only). TypeScript types are bundled.
 
 ## What's inside
 
-Two independent tool groups, all exported as **pure functions + JSON schemas**. Bring your own MCP SDK / agent framework.
+Two tool groups, both exported as **pure functions + JSON schemas**. Bring your own MCP SDK / agent framework. Both groups share a single `fch_` API key (`Authorization: Bearer fch_...`)—DeepAgent traffic is routed through the Hub Gateway, strategy traffic hits commons-hub directly.
 
 | Group | Tools | Auth |
 |---|---|---|
-| **DeepAgent** (one-stop quant agent) | `fin_deepagent_health` · `_skills` · `_threads` · `_messages` · `_research_submit` · `_research_poll` · `_research_finalize` · `_status` · `_cancel` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` | DeepAgent `X-API-Key` |
-| **Strategy** (advanced local FEP v2.0 workflow) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | Hub Bearer token |
+| **DeepAgent** (one-stop quant agent) | `fin_deepagent_health` · `_skills` · `_threads` · `_messages` · `_research_submit` · `_research_poll` · `_research_finalize` · `_status` · `_cancel` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` | `Authorization: Bearer fch_...` (Hub Gateway) |
+| **Strategy** (advanced local FEP v2.0 workflow) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | `Authorization: Bearer fch_...` (Hub) |
 
 DeepAgent covers market data, analysis, deep reports, strategy generation, backtesting and paper trading — a one-stop quant-trading agent you can reach from any coding assistant via MCP.
 
@@ -43,10 +43,8 @@ DeepAgent covers market data, analysis, deep reports, strategy generation, backt
 ```ts
 import { resolveOpenFinClawConfig, executeDeepagentResearchSubmit } from "@openfinclaw/core";
 
-const config = resolveOpenFinClawConfig({
-  deepagentApiKey: process.env.OPENFINCLAW_DEEPAGENT_API_KEY,
-  allowMissingApiKey: true,
-});
+// Picks up OPENFINCLAW_API_KEY from env / ~/.openfinclaw/config.json automatically.
+const config = resolveOpenFinClawConfig();
 
 const { taskId } = await executeDeepagentResearchSubmit(
   { query: "Research NVDA momentum over the last 90 days, propose a strategy, backtest 1y" },
@@ -71,21 +69,18 @@ Each tool also ships a paired JSON schema (e.g. `deepagentResearchSubmitSchema`)
 import { resolveOpenFinClawConfig, type OpenFinClawConfig } from "@openfinclaw/core";
 
 const config: OpenFinClawConfig = resolveOpenFinClawConfig({
-  apiKey: "<your-hub-key>",                // optional; needed only for strategy tools
-  deepagentApiKey: "<your-deepagent-key>", // optional; needed only for DeepAgent tools
-  allowMissingApiKey: true,                // set when using DeepAgent without a Hub key
+  apiKey: "fch_...",          // unified key for both strategy & deepagent
+  allowMissingApiKey: true,    // diagnostic mode (used by `doctor`)
 });
 ```
 
 Resolution order (highest priority first):
 
-| Hub key (strategy group) | DeepAgent key |
-|---|---|
-| `options.apiKey` | `options.deepagentApiKey` |
-| `OPENFINCLAW_API_KEY` env | `OPENFINCLAW_DEEPAGENT_API_KEY` env (also accepts legacy `FINDOO_DEEPAGENT_API_KEY`) |
-| `~/.openfinclaw/config.json#apiKey` | `~/.openfinclaw/config.json#deepagentApiKey` |
+1. `options.apiKey`
+2. `OPENFINCLAW_API_KEY` env
+3. `~/.openfinclaw/config.json#apiKey`
 
-Override config file path with `OPENFINCLAW_CONFIG_PATH`.
+Override the config file path with `OPENFINCLAW_CONFIG_PATH`. The DeepAgent base URL defaults to `https://gateway.openfinclaw.ai/api/v1/agent` and can be overridden with `DEEPAGENT_API_URL` for staging.
 
 ---
 
@@ -96,9 +91,12 @@ For terminal-side true token-by-token streaming, use `parseDeepAgentSSE` directl
 ```ts
 import { parseDeepAgentSSE } from "@openfinclaw/core";
 
-const resp = await fetch(`${config.deepagentApiUrl}/api/threads/${threadId}/runs`, {
+const resp = await fetch(`${config.deepagentApiUrl}/threads/${threadId}/runs`, {
   method: "POST",
-  headers: { "X-API-Key": config.deepagentApiKey!, "Content-Type": "application/json" },
+  headers: {
+    Authorization: `Bearer ${config.apiKey}`,
+    "Content-Type": "application/json",
+  },
   body: JSON.stringify({ message: "Analyze BTC trend" }),
 });
 
@@ -115,7 +113,7 @@ For MCP server contexts (where token-by-token rendering isn't supported by most 
 
 ```ts
 // Configuration
-resolveOpenFinClawConfig, resolveConfigFromEnv, resolveDeepAgentApiKey
+resolveOpenFinClawConfig, resolveConfigFromEnv
 getUserConfigFilePath, readApiKeyFromConfigFile
 OpenFinClawConfig (type)
 

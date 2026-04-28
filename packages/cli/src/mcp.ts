@@ -156,10 +156,9 @@ export async function startMcpServer() {
   }
 
   // ── DeepAgent tools ──
-  // health + skills are public (no auth); others require `deepagentApiKey`.
-  // When the key is absent the handlers return a structured friendly error
-  // rather than refusing to register — this preserves the tool list for clients
-  // that inspect it before prompting the user to configure the key.
+  // 全部经 Hub Gateway 路径用 fch_ key 鉴权（与 strategy 模块共用 `apiKey`）。
+  // 当 key 缺失时 handler 返回结构化错误，不阻止注册——保留工具列表，
+  // 让 MCP 客户端在用户配置前仍能枚举能力。
   if (groups.includes("deepagent")) {
     server.registerTool(
       "fin_deepagent_health",

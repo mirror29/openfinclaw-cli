@@ -10,7 +10,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { OpenFinClawConfig } from "../config.js";
+import { DEFAULT_DEEPAGENT_API_URL, type OpenFinClawConfig } from "../config.js";
 import {
   clearDeepAgentTask,
   deepagentApiRequest,
@@ -57,7 +57,7 @@ function hintForStatus(status: number): string {
   switch (status) {
     case 401:
     case 403:
-      return "DeepAgent API Key 无效或未配置。请 `openfinclaw init` 或设置 OPENFINCLAW_DEEPAGENT_API_KEY。";
+      return "API Key 无效或未配置。请 `openfinclaw init` 或设置 OPENFINCLAW_API_KEY。";
     case 404:
       return "资源不存在。";
     case 0:
@@ -93,8 +93,8 @@ export const deepagentHealthSchema = {
 };
 
 /**
- * Execute `fin_deepagent_health` — ping DeepAgent `/api/health`.
- * Public endpoint; does not require `deepagentApiKey`.
+ * Execute `fin_deepagent_health` — ping DeepAgent health endpoint via Hub Gateway.
+ * Gateway 仍要求 fch_ key 鉴权（401 MISSING_CREDENTIALS）。
  * @param _params - Unused
  * @param config - Core configuration
  */
@@ -271,7 +271,7 @@ export async function executeDeepagentResearchSubmit(
   params: { query: string; threadId?: string },
   config: OpenFinClawConfig,
 ) {
-  if (!config.deepagentApiKey) {
+  if (!config.apiKey) {
     return { success: false as const, error: hintForStatus(401) };
   }
 
@@ -672,20 +672,17 @@ export async function executeDeepagentDownloadPackage(
   params: { packageId: string; targetDir?: string },
   config: OpenFinClawConfig,
 ) {
-  if (!config.deepagentApiKey) {
+  if (!config.apiKey) {
     return { success: false as const, error: hintForStatus(401) };
   }
 
-  const baseUrl = (config.deepagentApiUrl ?? "https://api.openfinclaw.ai/agent").replace(
-    /\/+$/,
-    "",
-  );
-  const url = `${baseUrl}/api/packages/${params.packageId}/download`;
+  const baseUrl = (config.deepagentApiUrl ?? DEFAULT_DEEPAGENT_API_URL).replace(/\/+$/, "");
+  const url = `${baseUrl}/packages/${params.packageId}/download`;
 
   let resp: Response;
   try {
     resp = await fetch(url, {
-      headers: { "X-API-Key": config.deepagentApiKey },
+      headers: { Authorization: `Bearer ${config.apiKey}` },
       signal: AbortSignal.timeout(config.requestTimeoutMs),
     });
   } catch (err) {

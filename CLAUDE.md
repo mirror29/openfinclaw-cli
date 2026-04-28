@@ -13,17 +13,15 @@
 - Install: `pnpm install`
 - Build: `pnpm build` (runs `tsc` in both packages, core first)
 - Core `tsconfig.json` excludes `src/**/__tests__/**` so tests are not emitted into `dist/` (smaller npm tarball); Vitest still runs `*.test.ts` from source.
-- Run CLI: `OPENFINCLAW_API_KEY=<your-hub-key> node packages/cli/dist/index.js <command>`
-- Run MCP: `OPENFINCLAW_API_KEY=<your-hub-key> node packages/cli/dist/index.js serve`
-- 启用 DeepAgent 工具组时额外传入：`OPENFINCLAW_DEEPAGENT_API_KEY=<your-deepagent-key>`
+- Run CLI: `OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js <command>`
+- Run MCP: `OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js serve`
+- DeepAgent 与 strategy 共用同一把 `OPENFINCLAW_API_KEY`（fch_ 前缀），经 Hub Gateway 统一鉴权。
 
 ## API Key Safety
 
-- **永远不要把真实 API Key 写进仓库里**（代码、测试、Markdown、提交说明、issue、PR 描述都不行）。示例和文档统一使用占位符：`fch_xxx`、`<your-hub-key>`、`<your-deepagent-key>`。
-- **两把独立的 Key**：
-  - `OPENFINCLAW_API_KEY` — Hub（strategy 组）（`fch_` 前缀，`Authorization: Bearer` 鉴权）
-  - `OPENFINCLAW_DEEPAGENT_API_KEY` — DeepAgent（服务端独立鉴权，走 `X-API-Key` header）
-- **用户层持久化**：`~/.openfinclaw/config.json`（由 `openfinclaw init` 写入；Unix 自动 `chmod 600`）。字段：`apiKey` / `deepagentApiKey`。
+- **永远不要把真实 API Key 写进仓库里**（代码、测试、Markdown、提交说明、issue、PR 描述都不行）。示例和文档统一使用占位符：`fch_xxx`、`<fch_...>`。
+- **统一一把 Key**：`OPENFINCLAW_API_KEY`（`fch_` 前缀，68 字符）同时驱动 strategy（Hub `/api/v1/skill/*`）与 deepagent（Hub Gateway `/api/v1/agent/*`），两条链路都用 `Authorization: Bearer fch_...` 鉴权。
+- **用户层持久化**：`~/.openfinclaw/config.json`（由 `openfinclaw init` 写入；Unix 自动 `chmod 600`）。字段：`apiKey`。
 - **MCP 子进程层**：各 agent 平台配置文件里的 `env` 字段（由 `init` 写入；例 `~/Library/Application Support/Claude/claude_desktop_config.json`）。
 - 提交代码前检查：`git diff` 不应出现任何像 key 的字符串（`fch_[0-9a-f]{32,}`、`[0-9a-f]{12,}` 等）。
 - `doctor` 命令打印 Key 时只显示前 8 位 + `…`，生产行为应当与之保持一致；新代码打印/日志 Key 时务必截断。
@@ -33,11 +31,10 @@
 - **Core is platform-agnostic**: No OpenClaw, MCP, or agent framework imports in `@openfinclaw/core`. All tool logic is exported as pure functions + JSON schemas.
 - **CLI is a thin adapter**: `@openfinclaw/cli` wraps core functions with MCP SDK (Zod schemas) and CLI formatting. Keep it minimal.
 - **Config via injection**: Core functions accept `OpenFinClawConfig` interface. Resolution lives in `resolveOpenFinClawConfig()` / `resolveConfigFromEnv()`:
-  - Hub key: `--api-key` (CLI) → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json#apiKey`
-  - DeepAgent key: `--deepagent-api-key` → `OPENFINCLAW_DEEPAGENT_API_KEY` / `FINDOO_DEEPAGENT_API_KEY` → `~/.openfinclaw/config.json#deepagentApiKey`
+  - Unified key: `--api-key` (CLI) → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json#apiKey`
   - Override config file path with `OPENFINCLAW_CONFIG_PATH`。
-  - `resolveOpenFinClawConfig({ allowMissingApiKey: true })` returns a config with `apiKey: ""` instead of throwing — used by CLI `deepagent` / `doctor` paths and the MCP server so users with **only** a DeepAgent key don't get blocked at config resolution. Callers must still verify `config.apiKey` before hitting Hub (strategy group).
-- **Independent auth surfaces**: Hub 和 DeepAgent 服务端是两套鉴权系统。不要假设一把 Key 两处通用；任何 DeepAgent API 调用必须走 `deepagentApiRequest()` 并用 `X-API-Key`。`openfinclaw deepagent *` 子命令与 `openfinclaw doctor` 不强制要求 Hub key；新增面向 DeepAgent 的子命令时沿用 `allowMissingApiKey` 模式。
+  - `resolveOpenFinClawConfig({ allowMissingApiKey: true })` returns a config with `apiKey: ""` instead of throwing — used only by CLI `doctor` so it can render a "key missing" diagnostic. Other commands (含 `deepagent *`) 一律要求 fch_ key，否则 Gateway 返回 401。
+- **Unified auth via Hub Gateway**: deepagent 与 strategy 走同一把 fch_ key。strategy 直接打 commons-hub `/api/v1/skill/*`；deepagent 打 Hub Gateway `https://gateway.openfinclaw.ai/api/v1/agent/*`，由 APISIX 完成 fch_ key 校验 + 多租户隔离 + URL rewrite 后转给 DeepAgent 后端。任何 DeepAgent 请求必须走 `deepagentApiRequest()`（默认 base URL 已含 `/api/v1/agent` 前缀），头部用 `Authorization: Bearer ${config.apiKey}`，**不要**再用 `X-API-Key` 或老的 `https://api.openfinclaw.ai/agent` 直连地址。
 - **Long-running LLM tools**: 远端 Agent 类长耗时操作采用 submit/poll/finalize 三段式（cross-platform-safe，见 `deepagent/tools.ts` 的 `research_submit` / `research_poll` / `research_finalize`）。**不要**试图在单次 MCP tool call 内阻塞等待 LLM 全部完成 —— MCP 客户端会超时或缓冲。
 - **CLI ≠ MCP for streaming**: 终端命令（如 `deepagent research`）可以直接消费 SSE 流做真正 token-by-token 渲染（`process.stdout.write`）；MCP 路径则必须回落到 submit/poll。
 
@@ -54,7 +51,7 @@ Tools 分为 2 组，可通过 `--tools=` 独立加载：
 ### DeepAgent 子模块结构（`packages/core/src/deepagent/`）
 
 - `types.ts` — REST 响应 + 7 种 SSE 事件 + `DeepAgentTaskState` 类型
-- `client.ts` — `deepagentApiRequest()` (X-API-Key) + `parseDeepAgentSSE()` async generator + 进程内任务态 store (`getDeepAgentTask / listDeepAgentTasks / clearDeepAgentTask`) + `startDeepAgentRun()`（submit 后后台消费 SSE 更新 store）
+- `client.ts` — `deepagentApiRequest()`（Hub Gateway + `Authorization: Bearer fch_...`）+ `parseDeepAgentSSE()` async generator + 进程内任务态 store (`getDeepAgentTask / listDeepAgentTasks / clearDeepAgentTask`) + `startDeepAgentRun()`（submit 后后台消费 SSE 更新 store）
 - `tools.ts` — 14 个 execute 函数 + JSON schemas；研究类走 submit/poll/finalize，其余同步调用
 
 ### 设计备注
@@ -146,7 +143,7 @@ def compute(data, context=None):
 - Framework: Vitest
 - Test files: colocated in `packages/core/src/__tests__/*.test.ts`
 - Run tests: `npx vitest run packages/core/src/__tests__/`
-- Run with live API: `OPENFINCLAW_API_KEY=<your-hub-key> npx vitest run packages/core/src/__tests__/`
+- Run with live API: `OPENFINCLAW_API_KEY=<fch_...> npx vitest run packages/core/src/__tests__/`
 
 ### Test categories
 
@@ -163,7 +160,7 @@ def compute(data, context=None):
 - Test tool schemas by checking `required`, `properties`, and `enum` values — not by invoking execute functions with mocked HTTP.
 - For pure utility functions (`parseStrategyId`, `formatDate`), test all edge cases.
 - Live tests use `describe.skipIf(!HAS_KEY)` to skip gracefully when no API key is set.
-- **Do NOT hardcode API keys in test files** — always read from `process.env.OPENFINCLAW_API_KEY` / `process.env.OPENFINCLAW_DEEPAGENT_API_KEY`. 同理：快照 / fixture / 日志文件里也不可留真实 key。
+- **Do NOT hardcode API keys in test files** — always read from `process.env.OPENFINCLAW_API_KEY`. 同理：快照 / fixture / 日志文件里也不可留真实 key。
 - Each test file should be self-contained — no shared mutable state between files.
 - Clean up env vars in `afterEach` when tests modify `process.env`.
 

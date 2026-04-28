@@ -9,7 +9,6 @@ export {
   type ResolveOpenFinClawConfigOptions,
   resolveConfigFromEnv,
   resolveOpenFinClawConfig,
-  resolveDeepAgentApiKey,
   getUserConfigFilePath,
   readApiKeyFromConfigFile,
   DEFAULT_HUB_API_URL,

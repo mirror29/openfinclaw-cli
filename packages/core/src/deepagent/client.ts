@@ -1,21 +1,24 @@
 /**
  * DeepAgent REST + SSE client for `@openfinclaw/core`.
  *
- * Authentication uses `X-API-Key` header (not Bearer — DeepAgent treats
- * Bearer tokens as JWT). The key is distinct from the Hub `fch_` key.
+ * 走 Hub Gateway（默认 `https://gateway.openfinclaw.ai/api/v1/agent`），
+ * 鉴权头 `Authorization: Bearer <fch_...>`。Gateway 在前置链路完成 fch_ key
+ * 验证 + 多租户隔离 + URL rewrite 后转发到 DeepAgent 后端，因此 CLI 只需
+ * 一把 `OPENFINCLAW_API_KEY` 即可同时驱动 strategy 与 deepagent 两个模块。
  *
  * @module @openfinclaw/core/deepagent/client
  */
-import type { OpenFinClawConfig } from "../config.js";
+import { DEFAULT_DEEPAGENT_API_URL, type OpenFinClawConfig } from "../config.js";
 import type { DeepAgentSSEEvent, DeepAgentTaskState } from "./types.js";
 
 /**
  * HTTP request helper for the DeepAgent API (non-streaming endpoints).
- * Wraps fetch with `X-API-Key` auth + structured error handling.
+ * Wraps fetch with `Authorization: Bearer` auth + structured error handling.
  * Network errors surface as `{ status: 0, data: { error: { message } } }`.
- * @param config - Core config (uses `deepagentApiUrl`, `deepagentApiKey`, `requestTimeoutMs`)
+ * @param config - Core config (uses `deepagentApiUrl`, `apiKey`, `requestTimeoutMs`)
  * @param method - HTTP method
- * @param pathSegments - Path under `/api` (e.g. `/threads`)
+ * @param pathSegments - Path under the Gateway base (e.g. `/threads`); the
+ *   `/api/v1/agent` prefix is part of `deepagentApiUrl`, do NOT include it again.
  * @param options - Optional `body`, `searchParams`, and `requireAuth` flag
  */
 export async function deepagentApiRequest(
@@ -25,15 +28,12 @@ export async function deepagentApiRequest(
   options?: {
     body?: Record<string, unknown>;
     searchParams?: Record<string, string>;
-    /** When true (default), require `deepagentApiKey` to be set. */
+    /** When true (default), require `apiKey` to be set. */
     requireAuth?: boolean;
   },
 ): Promise<{ status: number; data: unknown }> {
-  const baseUrl = (config.deepagentApiUrl ?? "https://api.openfinclaw.ai/agent").replace(
-    /\/+$/,
-    "",
-  );
-  const url = new URL(`${baseUrl}/api${pathSegments}`);
+  const baseUrl = (config.deepagentApiUrl ?? DEFAULT_DEEPAGENT_API_URL).replace(/\/+$/, "");
+  const url = new URL(`${baseUrl}${pathSegments}`);
   if (options?.searchParams) {
     for (const [k, v] of Object.entries(options.searchParams)) {
       url.searchParams.set(k, v);
@@ -41,15 +41,15 @@ export async function deepagentApiRequest(
   }
 
   const requireAuth = options?.requireAuth ?? true;
-  if (requireAuth && !config.deepagentApiKey) {
+  if (requireAuth && !config.apiKey) {
     return {
       status: 0,
       data: {
         error: {
           message:
-            "DeepAgent API key not configured. Set OPENFINCLAW_DEEPAGENT_API_KEY, " +
+            "API key not configured. Set OPENFINCLAW_API_KEY, " +
             "run `openfinclaw init` to save it to ~/.openfinclaw/config.json, " +
-            "or pass --deepagent-api-key.",
+            "or pass --api-key.",
         },
       },
     };
@@ -59,8 +59,8 @@ export async function deepagentApiRequest(
     Accept: "application/json",
     "Content-Type": "application/json",
   };
-  if (config.deepagentApiKey) {
-    headers["X-API-Key"] = config.deepagentApiKey;
+  if (config.apiKey) {
+    headers["Authorization"] = `Bearer ${config.apiKey}`;
   }
 
   let response: Response;
@@ -189,21 +189,18 @@ export async function startDeepAgentRun(
   query: string,
   label?: string,
 ): Promise<{ taskId: string; threadId: string }> {
-  if (!config.deepagentApiKey) {
-    throw new Error("DeepAgent API key not configured");
+  if (!config.apiKey) {
+    throw new Error("API key not configured");
   }
 
-  const baseUrl = (config.deepagentApiUrl ?? "https://api.openfinclaw.ai/agent").replace(
-    /\/+$/,
-    "",
-  );
-  const url = `${baseUrl}/api/threads/${threadId}/runs`;
+  const baseUrl = (config.deepagentApiUrl ?? DEFAULT_DEEPAGENT_API_URL).replace(/\/+$/, "");
+  const url = `${baseUrl}/threads/${threadId}/runs`;
   const sseTimeout = config.deepagentSseTimeoutMs ?? 900_000;
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      "X-API-Key": config.deepagentApiKey,
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
       Accept: "text/event-stream",
     },
