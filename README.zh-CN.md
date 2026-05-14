@@ -69,20 +69,39 @@
 
 > 💡 想先直观感受一下？**[在浏览器里先试 DeepAgent](https://hub.openfinclaw.ai/en/chat)**，再决定是否本地集成。
 
-### 方式一：交互式安装（推荐）
+### 60 秒上手
+
+```bash
+npx @openfinclaw/cli@latest install               # 向导 + MCP 配置 + Skill 注册 + doctor 一气呵成
+openfinclaw deepagent +research "盘点 BTC 周线"     # 立刻流式跑一轮研究 / 策略 / 回测
+```
+
+`install` 是新加入的"一行命令"入口：跑交互式向导、给所有探测到的 AI Agent 写 MCP 配置、把 `fch_` Key 持久化到 `~/.openfinclaw/config.json`（Unix 下 chmod 600）、把 OpenFinClaw 注册成**全局 AI Skill**（Claude Code / Cursor 见到 `quant`/`backtest`/`量化` 等关键词会自动触发），最后跑一次连通性检查给你绿勾。
+
+> **关于"skill"两层含义**：仓库里 `skill_*` 系列 MCP 工具和 `openfinclaw skill-install` 命令指的不是同一件事。前者管理 **Hub 上的量化策略包**（FEP v2.0 ZIP，发布在 <https://hub.openfinclaw.ai>）；后者把 OpenFinClaw 注册成 **AI Agent skill**（一份 SKILL.md 放进 `~/.claude/skills/` 等目录）。两者凑巧共用了 skill 这个词。
+
+#### 非交互 / CI 场景
+
+```bash
+npx @openfinclaw/cli@latest install --yes \
+  --platforms cursor,claude-code \
+  --tool-groups deepagent,strategy \
+  --api-key fch_xxx \
+  --register-skill
+```
+
+#### 只跑向导，不注册 Skill、不跑 doctor
 
 ```bash
 npx @openfinclaw/cli init
 ```
 
-安装向导会：
-- 引导输入 API Key（Hub 可选，仅 strategy 组需要；DeepAgent 主推填一下）
-- 让你选择要启用的工具组
-- 结合本机安装痕迹（如应用包、用户数据目录、`PATH` 中的 CLI）与**已有 MCP 配置路径**自动勾选候选平台
-- 将 MCP 配置写入所选平台
-- 写入 `~/.openfinclaw/config.json`（Unix 下权限 600），终端可直接用 CLI 而无需 `export`
+向导会：
+- 结合本机安装痕迹（应用包、用户数据目录、`PATH` 中的 CLI）与**已有 MCP 配置路径**自动勾选候选平台。
+- 一次性问你拿统一的 `fch_` Key。
+- 让你选要启用的工具组（`deepagent`、`strategy`）。
 
-**CLI 与 MCP：** 各 Agent 从自己的 MCP 配置里 `env` 注入密钥，**不会**改你的 shell 配置。`openfinclaw` / `serve` 解析顺序：CLI 参数 → 环境变量 → `~/.openfinclaw/config.json`。
+**CLI 与 MCP：** 各 Agent 从自己的 MCP 配置里 `env` 注入密钥，**不会**改你的 shell 配置。`openfinclaw` / `serve` 解析顺序：`--api-key` → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json`。
 
 ### 方式二：手动配置
 
@@ -159,9 +178,12 @@ openfinclaw update
 
 | 分组 | 命令 |
 |------|------|
-| DeepAgent | `deepagent health`、`deepagent skills`、`deepagent research`、`deepagent threads`、`deepagent messages`、`deepagent backtests`、`deepagent packages`、`deepagent download` |
+| DeepAgent | `deepagent +research`、`deepagent health`、`deepagent skills`、`deepagent threads`、`deepagent messages`、`deepagent backtests`、`deepagent packages`、`deepagent download` |
 | 策略管理 | `leaderboard`、`strategy-info`、`fork`、`list-strategies`、`validate`、`publish`、`publish-verify` |
-| 系统 | `init`、`serve`、`doctor`、`update` |
+| Raw 通道 | `api GET <path>` · `api POST <path> --json '<body>'` —— 直打 Hub Gateway，鉴权自动附加 |
+| 系统 | `install`（推荐）、`init`、`skill-install`、`serve`、`doctor`、`update`、`examples` |
+
+`+verb` 前缀（例如 `deepagent +research`）走人类友好的流式渲染路径；不带 `+` 的原子动词以及 MCP 暴露的 `research_submit/poll/finalize` 三件套，留给脚本和 Agent 调用。
 
 运行 `openfinclaw --help` 查看完整用法与选项。
 
