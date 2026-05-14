@@ -125,7 +125,10 @@ const BOARD_NAMES: Record<string, string> = {
  * @param command - First positional after `openfinclaw`
  * @param args - Remaining argv
  */
-export async function runCli(command: string, args: string[]) {
+export async function runCli(rawCommand: string, args: string[]) {
+  // `+verb` Shortcut: strip leading `+` so callers can write
+  // `openfinclaw +leaderboard` for parity with `deepagent +research`.
+  const command = rawCommand.startsWith("+") ? rawCommand.slice(1) : rawCommand;
   const { positional, flags } = parseArgs(args);
   const outputJson = flags.output === "json";
   const apiKeyOpt = flags["api-key"];
@@ -427,6 +430,11 @@ export async function runCli(command: string, args: string[]) {
         break;
       }
 
+      case "api": {
+        await runApiRaw(positional, flags, outputJson, config);
+        break;
+      }
+
       case "doctor": {
         console.log(header("OpenFinClaw Doctor"));
         const apiMark = config.apiKey
@@ -497,13 +505,21 @@ async function runDeepagentSubcommand(
   outputJson: boolean,
   config: Parameters<typeof executeDeepagentHealth>[1],
 ): Promise<void> {
-  const sub = positional[0];
-  if (!sub) {
+  const rawSub = positional[0];
+  if (!rawSub) {
     console.error(
       errorLine("Usage: openfinclaw deepagent <health|skills|research|status|threads|messages|backtests|backtest|packages|package-meta|download>"),
     );
     process.exit(1);
   }
+
+  // `+verb` Shortcut form (parity with larksuite/cli):
+  //   `deepagent +research "<q>"` ≡ `deepagent research "<q>"`
+  //   `deepagent +health`         ≡ `deepagent health`
+  // The `+` prefix signals "human-friendly, streaming, sane defaults" while
+  // the bare verbs (and MCP-exposed atomic verbs like `research_submit`)
+  // remain available for scripted/agent use.
+  const sub = rawSub.startsWith("+") ? rawSub.slice(1) : rawSub;
 
   switch (sub) {
     case "health": {
@@ -781,6 +797,89 @@ async function runDeepagentSubcommand(
       );
       process.exit(1);
   }
+}
+
+/**
+ * Raw Hub Gateway request — `openfinclaw api <METHOD> <path>`. Auth header
+ * is auto-attached, so the user only types the verb + path. Parity with
+ * `lark-cli api GET /open-apis/...`: it's the escape hatch for endpoints
+ * the typed commands don't cover yet.
+ *
+ * Examples:
+ *   openfinclaw api GET /threads
+ *   openfinclaw api POST /threads/abc/runs --json '{"message":"..."}'
+ *   openfinclaw api GET /backtests --raw
+ *
+ * @param positional - `[method, path, ...]`
+ * @param flags - `--json <body>`, `--raw` (skip pretty-print), `--query <k=v,..>` (search params)
+ */
+async function runApiRaw(
+  positional: string[],
+  flags: Record<string, string>,
+  outputJson: boolean,
+  config: Parameters<typeof deepagentApiRequest>[0],
+): Promise<void> {
+  const method = (positional[0] ?? "").toUpperCase();
+  const path = positional[1];
+  const allowedMethods = ["GET", "POST", "DELETE"] as const;
+  type AllowedMethod = (typeof allowedMethods)[number];
+  if (!path || !(allowedMethods as readonly string[]).includes(method)) {
+    usageExit(
+      "openfinclaw api <GET|POST|DELETE> <path> [--json '<body>'] [--query k=v,k2=v2] [--raw]",
+    );
+  }
+
+  let body: Record<string, unknown> | undefined;
+  if (flags.json) {
+    try {
+      body = JSON.parse(flags.json) as Record<string, unknown>;
+    } catch (err) {
+      console.error(
+        failure({
+          what: "Invalid --json payload",
+          why: err instanceof Error ? err.message : String(err),
+          fix: "Pass valid JSON, e.g. --json '{\"message\":\"hi\"}'",
+        }),
+      );
+      process.exit(1);
+    }
+  }
+
+  let searchParams: Record<string, string> | undefined;
+  if (flags.query) {
+    searchParams = {};
+    for (const pair of flags.query.split(",")) {
+      const [k, ...rest] = pair.split("=");
+      if (!k) continue;
+      searchParams[k] = rest.join("=");
+    }
+  }
+
+  const ensurePath = path.startsWith("/") ? path : `/${path}`;
+  const result = await deepagentApiRequest(
+    config,
+    method as AllowedMethod,
+    ensurePath,
+    { body, searchParams },
+  );
+
+  if (outputJson || flags.raw === "true") {
+    printJson(result);
+    return;
+  }
+
+  const statusLabel =
+    result.status >= 200 && result.status < 300
+      ? color.green(String(result.status))
+      : result.status >= 400
+        ? color.red(String(result.status))
+        : color.yellow(String(result.status));
+  console.log(header(`${method} ${ensurePath}`));
+  console.log(kv("Status", statusLabel));
+  console.log();
+  console.log(JSON.stringify(result.data, null, 2));
+  console.log();
+  if (result.status >= 400) process.exit(1);
 }
 
 /**

@@ -54,6 +54,17 @@ if (!command || command === "serve") {
 } else if (command === "init") {
   const { runInit } = await import("./init.js");
   await runInit(process.argv.slice(3));
+} else if (command === "install") {
+  // `install` is the new top-level "60-second onboarding" verb (aligns with
+  // larksuite/cli). It reuses the same wizard as `init` but additionally:
+  //   - offers global Skill registration (~/.claude/skills/openfinclaw/)
+  //   - runs `doctor` at the end so users see a green-check summary
+  const { runInit } = await import("./init.js");
+  await runInit(process.argv.slice(3), { mode: "install" });
+} else if (command === "skill-install") {
+  // Stand-alone Skill registration command (non-interactive).
+  const { runSkillInstall } = await import("./skill-install.js");
+  await runSkillInstall(process.argv.slice(3));
 } else if (command === "update") {
   const { runUpdate } = await import("./update.js");
   await runUpdate();
@@ -121,11 +132,14 @@ function printHelp() {
     `    ${cmd("publish-verify")} ${dim("--submission-id …")}  Query publish / backtest status`,
     "",
     `  ${h("System")}`,
-    `    ${cmd("init")}                                     Interactive setup wizard`,
+    `    ${cmd("install")} ${dim("[--register-skill]")}                One-line setup: wizard + Skill registration + doctor`,
+    `    ${cmd("init")}                                     Interactive setup wizard (no Skill registration)`,
+    `    ${cmd("skill-install")} ${dim("[--force]")}                  Register openfinclaw as a global AI Skill`,
     `    ${cmd("update")}                                   Upgrade to the latest version`,
     `    ${cmd("examples")} ${dim("[category]")}                     Show 10+ ready-to-run prompts`,
     `    ${cmd("serve")} ${dim("[--tools=strategy,deepagent]")}       Start the MCP Server`,
     `    ${cmd("doctor")}                                  Diagnose config & connectivity`,
+    `    ${cmd("api")} ${dim("<METHOD> <path>")} ${dim("[--json <body>]")}  Raw Hub Gateway request (auth auto-attached)`,
     "",
     `  ${h("Options")}`,
     `    ${dim("--api-key <key>")}          Override the API key`,

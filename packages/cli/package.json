@@ -1,6 +1,6 @@
 {
   "name": "@openfinclaw/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "One-stop quant-trading AI agent for any coding assistant — MCP server + CLI",
   "license": "MIT",
   "type": "module",
@@ -43,7 +43,7 @@
     "cli"
   ],
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc && node -e \"const fs=require('node:fs'),path=require('node:path');const src=path.join('..','..','skills');if(fs.existsSync(src))fs.cpSync(src,path.join('dist','skills'),{recursive:true})\"",
     "dev": "tsc --watch",
     "test": "echo 'no tests yet'"
   },

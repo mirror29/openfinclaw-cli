@@ -69,20 +69,39 @@ Copy-paste any of these into `openfinclaw deepagent research "…"` (or drop the
 
 > 💡 Want to see it in action before installing? **[Try DeepAgent in your browser](https://hub.openfinclaw.ai/en/chat)** first.
 
-### 1. Interactive Setup (Recommended)
+### 60-second onboarding
+
+```bash
+npx @openfinclaw/cli@latest install               # wizard + MCP configs + Skill registration + doctor
+openfinclaw deepagent +research "盘点 BTC 周线"     # streaming research / strategy / backtest
+```
+
+`install` is the new one-liner: it runs the interactive wizard, writes MCP configs to every detected AI agent, persists your `fch_` key to `~/.openfinclaw/config.json` (chmod 600 on Unix), registers OpenFinClaw as a **global AI Skill** so Claude Code / Cursor auto-trigger it on keywords like `quant`/`backtest`/`量化`, and finishes with a connectivity check.
+
+> **Note on terminology.** The `skill_*` MCP tools and the `openfinclaw skill-install` command refer to two different things. The MCP tools manage **Hub strategy packages** (FEP v2.0 ZIPs published on <https://hub.openfinclaw.ai>). `skill-install` registers OpenFinClaw as an **AI Agent skill** (a SKILL.md file under `~/.claude/skills/`). Both live in the codebase under the same word — sorry.
+
+#### Non-interactive / CI
+
+```bash
+npx @openfinclaw/cli@latest install --yes \
+  --platforms cursor,claude-code \
+  --tool-groups deepagent,strategy \
+  --api-key fch_xxx \
+  --register-skill
+```
+
+#### Just-the-wizard mode (no Skill registration, no doctor)
 
 ```bash
 npx @openfinclaw/cli init
 ```
 
-The wizard will:
-- Ask for your API key(s) — Hub (optional, for strategy group) and/or DeepAgent
-- Let you choose which tool groups to enable
-- Pre-select platforms when **either** common install markers match (app bundles, user data dirs, CLI on `PATH`) **or** the expected MCP config path already exists — these are not the same as "every app you have installed"
-- Write MCP config to each selected platform
-- Save `~/.openfinclaw/config.json` so terminal CLI works without `export` (Unix: file mode 600)
+The wizard:
+- Pre-selects platforms when **either** common install markers match (app bundles, user data dirs, CLI on `PATH`) **or** the expected MCP config path already exists.
+- Asks once for the unified `fch_` key.
+- Lets you pick tool groups (`deepagent`, `strategy`).
 
-**CLI vs MCP:** Agent platforms load the API key from their MCP `env` block. That does **not** change your shell profile. A shell `OPENFINCLAW_API_KEY` is still visible to any process you start in that terminal — this is normal. Resolution order for `openfinclaw` / `serve` is: CLI flag → env var → `~/.openfinclaw/config.json`.
+**CLI vs MCP:** agent platforms load the API key from their MCP `env` block — that does **not** modify your shell profile. Resolution order for `openfinclaw` / `serve` is: `--api-key` flag → `OPENFINCLAW_API_KEY` env var → `~/.openfinclaw/config.json`.
 
 ### 2. Manual Configuration
 
@@ -159,9 +178,12 @@ openfinclaw update
 
 | Group | Commands |
 |-------|----------|
-| DeepAgent | `deepagent health`, `deepagent skills`, `deepagent research`, `deepagent threads`, `deepagent messages`, `deepagent backtests`, `deepagent packages`, `deepagent download` |
+| DeepAgent | `deepagent +research`, `deepagent health`, `deepagent skills`, `deepagent threads`, `deepagent messages`, `deepagent backtests`, `deepagent packages`, `deepagent download` |
 | Strategy | `leaderboard`, `strategy-info`, `fork`, `list-strategies`, `validate`, `publish`, `publish-verify` |
-| System | `init`, `serve`, `doctor`, `update` |
+| Raw | `api GET <path>` · `api POST <path> --json '<body>'` — direct Hub Gateway call with auth pre-attached |
+| System | `install` (recommended), `init`, `skill-install`, `serve`, `doctor`, `update`, `examples` |
+
+The `+verb` prefix (e.g. `deepagent +research`) selects the human-friendly streaming path; the bare verbs and the MCP-only `research_submit/poll/finalize` triplet are kept for scripted/agent use.
 
 Run `openfinclaw --help` for full usage and options.
 

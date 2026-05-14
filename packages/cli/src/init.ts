@@ -654,6 +654,10 @@ interface InitFlags {
   apiKey?: string;
   forceFallback: boolean;
   help: boolean;
+  /** Tri-state: undefined = ask (install mode) / treat-as-no (init mode). */
+  registerSkill?: boolean;
+  /** Only meaningful in install mode — skip the final connectivity doctor. */
+  noDoctor: boolean;
 }
 
 /**
@@ -662,7 +666,7 @@ interface InitFlags {
  * @param argv - Args after the `init` subcommand (i.e. `process.argv.slice(3)`)
  */
 function parseInitFlags(argv: string[]): InitFlags {
-  const out: InitFlags = { yes: false, forceFallback: false, help: false };
+  const out: InitFlags = { yes: false, forceFallback: false, help: false, noDoctor: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     const [keyRaw, inlineVal] = a.startsWith("--") ? a.slice(2).split("=") : ["", undefined];
@@ -705,6 +709,15 @@ function parseInitFlags(argv: string[]): InitFlags {
         if (v) out.apiKey = v;
         break;
       }
+      case "register-skill":
+        out.registerSkill = true;
+        break;
+      case "no-register-skill":
+        out.registerSkill = false;
+        break;
+      case "no-doctor":
+        out.noDoctor = true;
+        break;
       default:
         break;
     }
@@ -716,21 +729,27 @@ function printInitHelp(): void {
   const lines = [
     "",
     `  ${boldCyan("openfinclaw init")}  ${dim("Interactive MCP setup wizard")}`,
+    `  ${boldCyan("openfinclaw install")}  ${dim("Same wizard + Skill registration + doctor (60-second onboarding)")}`,
     "",
     `  ${bold("Interactive (default)")}`,
-    `    openfinclaw init`,
+    `    openfinclaw install     ${dim("# recommended for first-time users")}`,
+    `    openfinclaw init        ${dim("# wizard only, no Skill registration")}`,
     "",
     `  ${bold("Non-interactive / scripted")}`,
     `    --yes, -y                      Skip every confirmation that can be skipped`,
     `    --platforms <a,b,c>            Target platforms (e.g. cursor,claude-code)`,
     `    --tool-groups <a,b,c>          Tool groups (deepagent / strategy)`,
     `    --api-key <fch_...>            Unified API key (drives both strategy & deepagent)`,
+    `    --register-skill               Register as global AI Skill (install mode only)`,
+    `    --no-register-skill            Skip Skill registration (install mode only)`,
+    `    --no-doctor                    Skip post-install connectivity check`,
     `    --non-interactive              Force line-input mode (bypass clack)`,
     "",
     `  ${bold("Example")}`,
-    `    openfinclaw init --yes --platforms cursor,claude-code \\`,
-    `                     --tool-groups deepagent,strategy \\`,
-    `                     --api-key fch_xxx`,
+    `    openfinclaw install --yes --platforms cursor,claude-code \\`,
+    `                        --tool-groups deepagent,strategy \\`,
+    `                        --api-key fch_xxx \\`,
+    `                        --register-skill`,
     "",
   ];
   console.log(lines.join("\n"));
@@ -741,8 +760,18 @@ function printInitHelp(): void {
 /**
  * Run the interactive `init` wizard.
  * @param argv - Args after the `init` subcommand (flags; positional args ignored)
+ * @param options - When `mode === "install"`, the wizard additionally:
+ *   - asks whether to register openfinclaw as a global AI Skill (default yes)
+ *   - runs a brief `doctor` health-check at the end so users see green checks
+ *
+ *   `mode === "init"` (default) preserves the v0.6 behavior exactly — no
+ *   Skill registration prompt, no doctor.
  */
-export async function runInit(argv: string[] = []): Promise<void> {
+export async function runInit(
+  argv: string[] = [],
+  options: { mode?: "init" | "install" } = {},
+): Promise<void> {
+  const mode = options.mode ?? "init";
   const flags = parseInitFlags(argv);
   if (flags.help) {
     printInitHelp();
@@ -842,6 +871,36 @@ export async function runInit(argv: string[] = []): Promise<void> {
     );
   }
 
+  // ── Step 5: Register as global AI Skill (install mode only) ──
+  // In `init` mode we skip this step entirely to preserve v0.6 behavior.
+  // In `install` mode we default to yes for interactive runs, and respect
+  // --register-skill / --no-register-skill in scripted runs.
+  if (mode === "install") {
+    const shouldRegister = await resolveSkillRegister(flags, clack);
+    if (shouldRegister) {
+      printStep(clack, "Step 5", "Register as a global AI Skill");
+      try {
+        const { registerGlobalSkill } = await import("./skill-install.js");
+        const results = await registerGlobalSkill({ force: true });
+        for (const r of results) {
+          if (r.written) {
+            printSuccess(clack, formatPathWrite(r.target, r.path));
+          } else {
+            printInfo(
+              clack,
+              `${dim(r.target)} ${dim("→")} ${dim(r.reason ?? "skipped")}`,
+            );
+          }
+        }
+      } catch (err) {
+        printWarn(
+          clack,
+          `Skill registration failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
   // ── Summary ──
   const cliOnPath = isBareCliOnPath();
   const terminalPrefix = cliOnPath ? "openfinclaw" : "npx -y @openfinclaw/cli";
@@ -894,6 +953,65 @@ export async function runInit(argv: string[] = []): Promise<void> {
     console.log(`  ${dim("API Key")}    ${cyan("https://hub.openfinclaw.ai")}`);
     console.log();
   }
+
+  // ── Post-install connectivity check (install mode only) ──
+  // Verifies the Hub Gateway is reachable with the key the user just typed
+  // so they get a green/red signal *before* they leave the terminal. The
+  // standalone `openfinclaw doctor` keeps doing the same job for later runs.
+  if (mode === "install" && !flags.noDoctor) {
+    await runInstallDoctor(hubKey);
+  }
+}
+
+/**
+ * Compact health-check shown at the tail of `openfinclaw install`.
+ * Uses the same DeepAgent /health endpoint as the standalone `doctor`
+ * command so behavior stays consistent, but renders only a single line.
+ *
+ * @param apiKey - fch_ key the wizard just persisted
+ */
+async function runInstallDoctor(apiKey: string): Promise<void> {
+  console.log(`  ${bold("Doctor")}  ${dim("→")}  ${dim("verifying Hub Gateway connectivity...")}`);
+  try {
+    const { resolveOpenFinClawConfig, executeDeepagentHealth } = await import(
+      "@openfinclaw/core"
+    );
+    const cfg = resolveOpenFinClawConfig({ apiKey });
+    const started = Date.now();
+    const h = await executeDeepagentHealth({}, cfg);
+    const elapsed = Date.now() - started;
+    if (h.success) {
+      const parts: string[] = [`OK · ${elapsed}ms`];
+      if (h.sdk) parts.push(`sdk=${h.sdk}`);
+      if (h.skills_count != null) parts.push(`${h.skills_count} skills`);
+      console.log(`  ${green("✔")} ${green(parts.join(" · "))}`);
+    } else {
+      console.log(`  ${red("✖")} ${red(h.error ?? "health check failed")}`);
+    }
+  } catch (err) {
+    console.log(
+      `  ${red("✖")} ${red(err instanceof Error ? err.message : String(err))}`,
+    );
+  }
+  console.log();
+}
+
+/**
+ * Decide whether to register the global AI Skill during `install`.
+ * Honors --register-skill / --no-register-skill / --yes flags, otherwise
+ * asks interactively with default = yes.
+ */
+async function resolveSkillRegister(
+  flags: InitFlags,
+  clack: typeof import("@clack/prompts") | undefined,
+): Promise<boolean> {
+  if (flags.registerSkill !== undefined) return flags.registerSkill;
+  if (flags.yes) return true;
+  return confirmYesNo(
+    clack,
+    "Register openfinclaw as a global AI Skill (so Claude Code / Cursor can auto-trigger it)?",
+    true,
+  );
 }
 
 /**
