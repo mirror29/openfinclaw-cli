@@ -8,13 +8,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import {
   resolveOpenFinClawConfig,
-  executeSkillLeaderboard,
-  executeSkillGetInfo,
-  executeSkillFork,
-  executeSkillListLocal,
-  executeSkillValidate,
-  executeSkillPublish,
-  executeSkillPublishVerify,
+  executeStrategyLeaderboard,
+  executeStrategyGetInfo,
+  executeStrategyFork,
+  executeStrategyListLocal,
+  executeStrategyValidate,
+  executeStrategyPublish,
+  executeStrategyPublishVerify,
   executeDeepagentHealth,
   executeDeepagentSkills,
   executeDeepagentThreads,
@@ -74,7 +74,7 @@ export async function startMcpServer() {
   // ── Strategy tools ──
   if (groups.includes("strategy")) {
     server.registerTool(
-      "skill_leaderboard",
+      "strategy_leaderboard",
       {
         description: "Query strategy leaderboard from Hub",
         inputSchema: {
@@ -83,22 +83,22 @@ export async function startMcpServer() {
           offset: z.number().optional().describe("Pagination offset"),
         },
       },
-      wrapHandler(config, executeSkillLeaderboard),
+      wrapHandler(config, executeStrategyLeaderboard),
     );
 
     server.registerTool(
-      "skill_get_info",
+      "strategy_get_info",
       {
         description: "Get strategy details from Hub",
         inputSchema: {
           strategyId: z.string().describe("Strategy ID (UUID or Hub URL)"),
         },
       },
-      wrapHandler(config, executeSkillGetInfo),
+      wrapHandler(config, executeStrategyGetInfo),
     );
 
     server.registerTool(
-      "skill_fork",
+      "strategy_fork",
       {
         description: "Fork a public strategy from Hub to local directory",
         inputSchema: {
@@ -107,31 +107,31 @@ export async function startMcpServer() {
           targetDir: z.string().optional().describe("Custom target directory"),
         },
       },
-      wrapHandler(config, executeSkillFork),
+      wrapHandler(config, executeStrategyFork),
     );
 
     server.registerTool(
-      "skill_list_local",
+      "strategy_list_local",
       {
         description: "List all local strategies (forked or created)",
         inputSchema: {},
       },
-      wrapHandler(config, executeSkillListLocal),
+      wrapHandler(config, executeStrategyListLocal),
     );
 
     server.registerTool(
-      "skill_validate",
+      "strategy_validate",
       {
         description: "Validate a strategy package directory (FEP v2.0)",
         inputSchema: {
           dirPath: z.string().describe("Strategy package directory (must contain fep.yaml)"),
         },
       },
-      wrapHandler(config, executeSkillValidate),
+      wrapHandler(config, executeStrategyValidate),
     );
 
     server.registerTool(
-      "skill_publish",
+      "strategy_publish",
       {
         description: "Publish a strategy ZIP to Hub server (auto-runs backtest)",
         inputSchema: {
@@ -139,19 +139,19 @@ export async function startMcpServer() {
           visibility: z.enum(["public", "private", "unlisted"]).optional().describe("Override visibility"),
         },
       },
-      wrapHandler(config, executeSkillPublish),
+      wrapHandler(config, executeStrategyPublish),
     );
 
     server.registerTool(
-      "skill_publish_verify",
+      "strategy_publish_verify",
       {
         description: "Check publish and backtest status by submission or task ID",
         inputSchema: {
-          submissionId: z.string().optional().describe("Submission ID from skill_publish"),
-          backtestTaskId: z.string().optional().describe("Backtest task ID from skill_publish"),
+          submissionId: z.string().optional().describe("Submission ID from strategy_publish"),
+          backtestTaskId: z.string().optional().describe("Backtest task ID from strategy_publish"),
         },
       },
-      wrapHandler(config, executeSkillPublishVerify),
+      wrapHandler(config, executeStrategyPublishVerify),
     );
   }
 

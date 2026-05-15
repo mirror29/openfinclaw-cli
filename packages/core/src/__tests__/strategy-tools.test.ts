@@ -1,48 +1,48 @@
 import { describe, it, expect } from "vitest";
 import {
-  skillLeaderboardSchema,
-  skillGetInfoSchema,
-  skillForkSchema,
-  skillListLocalSchema,
-  skillValidateSchema,
-  skillPublishSchema,
-  skillPublishVerifySchema,
+  strategyLeaderboardSchema,
+  strategyGetInfoSchema,
+  strategyForkSchema,
+  strategyListLocalSchema,
+  strategyValidateSchema,
+  strategyPublishSchema,
+  strategyPublishVerifySchema,
 } from "../strategy/tools.js";
 
 describe("Strategy tool schemas", () => {
-  it("skillLeaderboardSchema should have optional boardType enum", () => {
-    expect(skillLeaderboardSchema.properties.boardType.enum).toEqual([
+  it("strategyLeaderboardSchema should have optional boardType enum", () => {
+    expect(strategyLeaderboardSchema.properties.boardType.enum).toEqual([
       "composite", "returns", "risk", "popular", "rising",
     ]);
   });
 
-  it("skillGetInfoSchema should require strategyId", () => {
-    expect(skillGetInfoSchema.required).toContain("strategyId");
+  it("strategyGetInfoSchema should require strategyId", () => {
+    expect(strategyGetInfoSchema.required).toContain("strategyId");
   });
 
-  it("skillForkSchema should require strategyId", () => {
-    expect(skillForkSchema.required).toContain("strategyId");
-    expect(skillForkSchema.properties.name.type).toBe("string");
+  it("strategyForkSchema should require strategyId", () => {
+    expect(strategyForkSchema.required).toContain("strategyId");
+    expect(strategyForkSchema.properties.name.type).toBe("string");
   });
 
-  it("skillListLocalSchema should have no required params", () => {
-    expect(skillListLocalSchema.required).toHaveLength(0);
+  it("strategyListLocalSchema should have no required params", () => {
+    expect(strategyListLocalSchema.required).toHaveLength(0);
   });
 
-  it("skillValidateSchema should require dirPath", () => {
-    expect(skillValidateSchema.required).toContain("dirPath");
+  it("strategyValidateSchema should require dirPath", () => {
+    expect(strategyValidateSchema.required).toContain("dirPath");
   });
 
-  it("skillPublishSchema should require filePath", () => {
-    expect(skillPublishSchema.required).toContain("filePath");
-    expect(skillPublishSchema.properties.visibility.enum).toEqual([
+  it("strategyPublishSchema should require filePath", () => {
+    expect(strategyPublishSchema.required).toContain("filePath");
+    expect(strategyPublishSchema.properties.visibility.enum).toEqual([
       "public", "private", "unlisted",
     ]);
   });
 
-  it("skillPublishVerifySchema should have optional params", () => {
-    expect(skillPublishVerifySchema.required).toHaveLength(0);
-    expect(skillPublishVerifySchema.properties.submissionId.type).toBe("string");
-    expect(skillPublishVerifySchema.properties.backtestTaskId.type).toBe("string");
+  it("strategyPublishVerifySchema should have optional params", () => {
+    expect(strategyPublishVerifySchema.required).toHaveLength(0);
+    expect(strategyPublishVerifySchema.properties.submissionId.type).toBe("string");
+    expect(strategyPublishVerifySchema.properties.backtestTaskId.type).toBe("string");
   });
 });

@@ -32,7 +32,7 @@ Two tool groups, both exported as **pure functions + JSON schemas**. Bring your 
 | Group | Tools | Auth |
 |---|---|---|
 | **DeepAgent** (one-stop quant agent) | `fin_deepagent_health` · `_skills` · `_threads` · `_messages` · `_research_submit` · `_research_poll` · `_research_finalize` · `_status` · `_cancel` · `_backtests` · `_backtest_result` · `_packages` · `_package_meta` · `_download_package` | `Authorization: Bearer fch_...` (Hub Gateway) |
-| **Strategy** (advanced local FEP v2.0 workflow) | `skill_publish` · `skill_validate` · `skill_fork` · `skill_leaderboard` · `skill_get_info` · `skill_list_local` · `skill_publish_verify` | `Authorization: Bearer fch_...` (Hub) |
+| **Strategy** (advanced local FEP v2.0 workflow) | `strategy_publish` · `strategy_validate` · `strategy_fork` · `strategy_leaderboard` · `strategy_get_info` · `strategy_list_local` · `strategy_publish_verify` | `Authorization: Bearer fch_...` (Hub) |
 
 DeepAgent covers market data, analysis, deep reports, strategy generation, backtesting and paper trading — a one-stop quant-trading agent you can reach from any coding assistant via MCP.
 
@@ -118,13 +118,13 @@ getUserConfigFilePath, readApiKeyFromConfigFile
 OpenFinClawConfig (type)
 
 // Strategy — execute + schema pairs
-executeSkillLeaderboard, skillLeaderboardSchema
-executeSkillGetInfo,     skillGetInfoSchema
-executeSkillFork,        skillForkSchema
-executeSkillListLocal,   skillListLocalSchema
-executeSkillValidate,    skillValidateSchema
-executeSkillPublish,     skillPublishSchema
-executeSkillPublishVerify, skillPublishVerifySchema
+executeStrategyLeaderboard, strategyLeaderboardSchema
+executeStrategyGetInfo,     strategyGetInfoSchema
+executeStrategyFork,        strategyForkSchema
+executeStrategyListLocal,   strategyListLocalSchema
+executeStrategyValidate,    strategyValidateSchema
+executeStrategyPublish,     strategyPublishSchema
+executeStrategyPublishVerify, strategyPublishVerifySchema
 forkStrategy, fetchStrategyInfo, listLocalStrategies, validateStrategyPackage
 hubApiRequest
 

@@ -6,13 +6,13 @@ import {
   resolveOpenFinClawConfig,
   getUserConfigFilePath,
   DEFAULT_DEEPAGENT_API_URL,
-  executeSkillLeaderboard,
-  executeSkillGetInfo,
-  executeSkillFork,
-  executeSkillListLocal,
-  executeSkillValidate,
-  executeSkillPublish,
-  executeSkillPublishVerify,
+  executeStrategyLeaderboard,
+  executeStrategyGetInfo,
+  executeStrategyFork,
+  executeStrategyListLocal,
+  executeStrategyValidate,
+  executeStrategyPublish,
+  executeStrategyPublishVerify,
   executeDeepagentHealth,
   executeDeepagentSkills,
   executeDeepagentThreads,
@@ -172,7 +172,7 @@ export async function runCli(rawCommand: string, args: string[]) {
         const boardType = flags.board ?? "composite";
         const limit = flags.limit ? Number(flags.limit) : 10;
         const offset = flags.offset ? Number(flags.offset) : 0;
-        const result = await executeSkillLeaderboard(
+        const result = await executeStrategyLeaderboard(
           { boardType, limit, offset },
           config,
         );
@@ -224,7 +224,7 @@ export async function runCli(rawCommand: string, args: string[]) {
       case "strategy-info": {
         const id = positional[0];
         if (!id) usageExit("openfinclaw strategy-info <strategyId>");
-        const result = await executeSkillGetInfo({ strategyId: id! }, config);
+        const result = await executeStrategyGetInfo({ strategyId: id! }, config);
         if (outputJson) {
           printJson(result);
         } else if ("error" in result) {
@@ -262,7 +262,7 @@ export async function runCli(rawCommand: string, args: string[]) {
         const strategyId = positional[0];
         if (!strategyId)
           usageExit("openfinclaw fork <strategyId> [--name <n>] [--target-dir <path>]");
-        const result = await executeSkillFork(
+        const result = await executeStrategyFork(
           { strategyId: strategyId!, name: flags.name, targetDir: flags["target-dir"] },
           config,
         );
@@ -289,7 +289,7 @@ export async function runCli(rawCommand: string, args: string[]) {
       }
 
       case "list-strategies": {
-        const result = await executeSkillListLocal({}, config);
+        const result = await executeStrategyListLocal({}, config);
         if (outputJson) {
           printJson(result);
         } else if (result.count === 0) {
@@ -324,7 +324,7 @@ export async function runCli(rawCommand: string, args: string[]) {
       case "validate": {
         const dirPath = positional[0];
         if (!dirPath) usageExit("openfinclaw validate <dirPath>");
-        const result = await executeSkillValidate({ dirPath: dirPath! }, config);
+        const result = await executeStrategyValidate({ dirPath: dirPath! }, config);
         if (outputJson) {
           printJson(result);
         } else {
@@ -353,7 +353,7 @@ export async function runCli(rawCommand: string, args: string[]) {
         const filePath = positional[0];
         if (!filePath)
           usageExit("openfinclaw publish <zipPath> [--visibility public|private|unlisted]");
-        const result = (await executeSkillPublish(
+        const result = (await executeStrategyPublish(
           { filePath: filePath!, visibility: flags.visibility },
           config,
         )) as Record<string, unknown>;
@@ -381,7 +381,7 @@ export async function runCli(rawCommand: string, args: string[]) {
       }
 
       case "publish-verify": {
-        const result = (await executeSkillPublishVerify(
+        const result = (await executeStrategyPublishVerify(
           {
             submissionId: flags["submission-id"],
             backtestTaskId: flags["backtest-task-id"],

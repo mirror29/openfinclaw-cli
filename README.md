@@ -76,132 +76,32 @@ npx @openfinclaw/cli@latest install               # wizard + MCP configs + Skill
 openfinclaw deepagent +research "盘点 BTC 周线"     # streaming research / strategy / backtest
 ```
 
-`install` is the new one-liner: it runs the interactive wizard, writes MCP configs to every detected AI agent, persists your `fch_` key to `~/.openfinclaw/config.json` (chmod 600 on Unix), registers OpenFinClaw as a **global AI Skill** so Claude Code / Cursor auto-trigger it on keywords like `quant`/`backtest`/`量化`, and finishes with a connectivity check.
+`install` runs the interactive wizard, writes MCP configs to every detected AI agent, persists your `fch_` key to `~/.openfinclaw/config.json` (chmod 600 on Unix), drops a `SKILL.md` under `~/.claude/skills/openfinclaw/` so Claude Code / Cursor auto-trigger on keywords like `quant` / `backtest` / `量化`, and finishes with a connectivity check.
 
-> **Note on terminology.** The `skill_*` MCP tools and the `openfinclaw skill-install` command refer to two different things. The MCP tools manage **Hub strategy packages** (FEP v2.0 ZIPs published on <https://hub.openfinclaw.ai>). `skill-install` registers OpenFinClaw as an **AI Agent skill** (a SKILL.md file under `~/.claude/skills/`). Both live in the codebase under the same word — sorry.
-
-#### Non-interactive / CI
+Non-interactive / CI:
 
 ```bash
 npx @openfinclaw/cli@latest install --yes \
-  --platforms cursor,claude-code \
-  --tool-groups deepagent,strategy \
-  --api-key fch_xxx \
-  --register-skill
+  --platforms cursor,claude-code --tool-groups deepagent,strategy \
+  --api-key fch_xxx --register-skill
 ```
 
-#### Just-the-wizard mode (no Skill registration, no doctor)
+Just the wizard, no SKILL.md registration, no doctor: `npx @openfinclaw/cli init`.
 
-```bash
-npx @openfinclaw/cli init
-```
+### CLI quick reference
 
-The wizard:
-- Pre-selects platforms when **either** common install markers match (app bundles, user data dirs, CLI on `PATH`) **or** the expected MCP config path already exists.
-- Asks once for the unified `fch_` key.
-- Lets you pick tool groups (`deepagent`, `strategy`).
-
-**CLI vs MCP:** agent platforms load the API key from their MCP `env` block — that does **not** modify your shell profile. Resolution order for `openfinclaw` / `serve` is: `--api-key` flag → `OPENFINCLAW_API_KEY` env var → `~/.openfinclaw/config.json`.
-
-### 2. Manual Configuration
-
-Add to your agent platform's MCP config:
-
-```json
-{
-  "mcpServers": {
-    "openfinclaw": {
-      "command": "npx",
-      "args": ["@openfinclaw/cli", "serve"],
-      "env": {
-        "OPENFINCLAW_API_KEY": "fch_your_key_here"
-      }
-    }
-  }
-}
-```
-
-A single `fch_` key drives both DeepAgent (via Hub Gateway) and the strategy group — no separate DeepAgent key needed.
-
-### 3. CLI Mode (Human Use)
-
-**Step 1 — Install (choose one)**
-
-```bash
-# Option A (recommended): install globally, use the short `openfinclaw` command everywhere
-npm install -g @openfinclaw/cli      # or: pnpm add -g @openfinclaw/cli
-
-# Option B: no install — prefix every command with `npx -y @openfinclaw/cli`
-#   (slower first run while the package is fetched)
-```
-
-All examples below use the short `openfinclaw <cmd>` form. If you chose Option B, replace it with `npx -y @openfinclaw/cli <cmd>`.
-
-**Step 2 — Provide your API key (choose one)**
-
-```bash
-# A. Run the init wizard once (writes ~/.openfinclaw/config.json, mode 600)
-openfinclaw init
-
-# B. Export for the current shell session
-export OPENFINCLAW_API_KEY=fch_your_key_here   # drives both deepagent & strategy
-
-# C. Pass it inline per command
-openfinclaw deepagent research "..." --api-key fch_your_key_here
-```
-
-**Step 3 — Run commands**
-
-```bash
-# Streaming research / analysis / strategy / backtest — all in one prompt
-openfinclaw deepagent research "Research NVDA last 90 days, propose a momentum strategy, backtest 1y, suggest a paper-trade plan"
-
-# Inspect past DeepAgent runs
-openfinclaw deepagent backtests
-openfinclaw deepagent packages
-openfinclaw deepagent download <packageId>
-
-# Service health (public, no key needed)
-openfinclaw deepagent health
-
-# Strategy leaderboard (Hub key required)
-openfinclaw leaderboard --limit 10
-
-# Diagnose config & connectivity
-openfinclaw doctor
-
-# Upgrade to the latest version
-openfinclaw update
-```
-
-**All CLI commands**
+A single `fch_` key drives both DeepAgent and the strategy group. Resolution order: `--api-key` → `OPENFINCLAW_API_KEY` → `~/.openfinclaw/config.json`.
 
 | Group | Commands |
 |-------|----------|
-| DeepAgent | `deepagent +research`, `deepagent health`, `deepagent skills`, `deepagent threads`, `deepagent messages`, `deepagent backtests`, `deepagent packages`, `deepagent download` |
+| DeepAgent | `deepagent +research "<query>"`, `deepagent health`, `deepagent skills`, `deepagent threads`, `deepagent messages`, `deepagent backtests`, `deepagent packages`, `deepagent download` |
 | Strategy | `leaderboard`, `strategy-info`, `fork`, `list-strategies`, `validate`, `publish`, `publish-verify` |
-| Raw | `api GET <path>` · `api POST <path> --json '<body>'` — direct Hub Gateway call with auth pre-attached |
-| System | `install` (recommended), `init`, `skill-install`, `serve`, `doctor`, `update`, `examples` |
+| Raw | `api GET <path>` · `api POST <path> --json '<body>'` — direct Hub Gateway call, auth pre-attached |
+| System | `install` · `init` · `skill-install` · `serve` · `doctor` · `update` · `examples` |
 
-The `+verb` prefix (e.g. `deepagent +research`) selects the human-friendly streaming path; the bare verbs and the MCP-only `research_submit/poll/finalize` triplet are kept for scripted/agent use.
+`+verb` (e.g. `deepagent +research`) is the human-friendly streaming path; the bare verbs and MCP-only atomic triplet `research_submit / research_poll / research_finalize` are for agents/scripts. Run `openfinclaw --help` for the full surface.
 
-Run `openfinclaw --help` for full usage and options.
-
-### 4. DeepAgent in depth
-
-DeepAgent shares the same `fch_` key as the strategy group — traffic is routed through the Hub Gateway, which validates the key and forwards the request to the DeepAgent backend.
-
-```bash
-# Save the key (or pass it inline with --api-key)
-export OPENFINCLAW_API_KEY=fch_your_key_here
-
-# Streaming research in the terminal (token-by-token)
-openfinclaw deepagent research "Write me a Tesla Bollinger Bands strategy and run a backtest"
-```
-
-`openfinclaw init` writes the unified key to `~/.openfinclaw/config.json`. Request a key on the Hub dashboard, or trial the service online at <https://hub.openfinclaw.ai/en/chat>.
-
-**Sample output** — one prompt produces strategy definition, backtest metrics, trade-level P&L, and improvement suggestions:
+**Sample DeepAgent output** — one prompt → strategy definition + backtest metrics + per-trade P&L + improvement notes:
 
 <p align="center">
   <img src="imgs/deepagent-backtest-metrics.png" alt="DeepAgent — strategy definition & performance metrics" width="49%" />
@@ -279,142 +179,41 @@ OpenFinClaw works with any MCP-compatible agent platform:
 ```
 </details>
 
-<details>
-<summary><b>VS Code (Copilot)</b> — <code>.vscode/mcp.json</code></summary>
-
-```json
-{
-  "servers": {
-    "openfinclaw": {
-      "command": "npx",
-      "args": ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"],
-      "env": {
-        "OPENFINCLAW_API_KEY": "fch_xxx"
-      }
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Hermes Agent</b> — <code>~/.hermes/config.yaml</code></summary>
-
-```yaml
-mcp_servers:
-  openfinclaw:
-    command: "npx"
-    args: ["@openfinclaw/cli", "serve", "--tools=deepagent,strategy"]
-    env:
-      OPENFINCLAW_API_KEY: "fch_xxx"
-```
-</details>
-
-<details>
-<summary><b>OpenClaw</b></summary>
-
-Add OpenFinClaw to your MCP config (e.g. `~/.openclaw/mcp.json`):
-```json
-{
-  "mcpServers": {
-    "openfinclaw": {
-      "command": "npx",
-      "args": ["@openfinclaw/cli", "serve"],
-      "env": {
-        "OPENFINCLAW_API_KEY": "fch_xxx"
-      }
-    }
-  }
-}
-```
-</details>
+For other platforms (VS Code, Hermes, Windsurf, Zed, OpenClaw, Junie, Trae, …), see [`configs/`](configs/) for ready-to-copy templates. The shape is the same — only the host key (`servers` vs `mcpServers` vs `context_servers`) and config path differ.
 
 ---
 
 ## Tool Groups & Context Optimization
 
-Load only the tools you need to minimize token usage:
+Load only what you need to save tokens: `serve --tools=deepagent` (~1,400 tk) or `serve --tools=strategy` (~1,000 tk), or omit `--tools` for both.
 
-```bash
-# DeepAgent only — the one-stop quant agent (~1,400 tokens)
-npx @openfinclaw/cli serve --tools=deepagent
-
-# Strategy group only (~1,000 tokens)
-npx @openfinclaw/cli serve --tools=strategy
-
-# Multiple groups
-npx @openfinclaw/cli serve --tools=deepagent,strategy
-
-# All tools (default)
-npx @openfinclaw/cli serve
-```
-
-| Group | Tools | Tokens |
-|-------|-------|--------|
-| `deepagent` | fin_deepagent_health / _skills / _research_submit / _research_poll / _research_finalize / _status / _cancel / _threads / _messages / _backtests / _backtest_result / _packages / _package_meta / _download_package | ~1,400 |
-| `strategy` | skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify | ~1,000 |
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────┐
-│       @openfinclaw/core         │  Pure business logic
-│  (zero platform dependencies)   │  DeepAgent client, strategy tools, types
-└──────────────┬──────────────────┘
-               │
-       ┌───────┼───────┐
-       ▼       ▼       ▼
-   ┌───────┐ ┌─────┐ ┌──────┐
-   │  MCP  │ │ CLI │ │ Init │
-   │Server │ │Mode │ │Wizard│
-   └───┬───┘ └──┬──┘ └──┬───┘
-       │        │       │
-       ▼        ▼       ▼
-   20+ Agent  Terminal  Auto-config
-   Platforms   Users    Platforms
-```
-
-The project is a monorepo with two packages:
-
-- **`@openfinclaw/core`** — Platform-independent business logic (DeepAgent client, strategy tools, shared types)
-- **`@openfinclaw/cli`** — MCP Server + CLI + interactive setup wizard
+| Group | Tools |
+|-------|-------|
+| `deepagent` | 14 remote-agent tools — `fin_deepagent_health` / `_skills` / `_research_submit` / `_research_poll` / `_research_finalize` / `_status` / `_cancel` / `_threads` / `_messages` / `_backtests` / `_backtest_result` / `_packages` / `_package_meta` / `_download_package` |
+| `strategy` | 7 local FEP v2.0 tools — `strategy_publish` / `strategy_validate` / `strategy_fork` / `strategy_leaderboard` / `strategy_get_info` / `strategy_list_local` / `strategy_publish_verify` |
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `OPENFINCLAW_API_KEY` | Yes | Unified `fch_` API key — drives both strategy (Hub) and deepagent (Hub Gateway). Falls back to `~/.openfinclaw/config.json`. | — |
-| `OPENFINCLAW_CONFIG_PATH` | No | Override path to JSON config `{ "apiKey": "fch_..." }` | `~/.openfinclaw/config.json` |
-| `HUB_API_URL` | No | Hub API URL | `https://hub.openfinclaw.ai` |
-| `DEEPAGENT_API_URL` | No | DeepAgent API URL (Hub Gateway) | `https://gateway.openfinclaw.ai/api/v1/agent` |
-| `REQUEST_TIMEOUT_MS` | No | HTTP request timeout (ms) | `60000` |
-| `DEEPAGENT_SSE_TIMEOUT_MS` | No | DeepAgent SSE stream timeout (ms) | `900000` |
+Only one is required:
 
-Get your API key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai), or try DeepAgent online first at <https://hub.openfinclaw.ai/en/chat>.
+| Variable | Description |
+|----------|-------------|
+| `OPENFINCLAW_API_KEY` | Unified `fch_` key. Drives both strategy (Hub) and deepagent (Hub Gateway). Falls back to `~/.openfinclaw/config.json` if unset. Get a key at [hub.openfinclaw.ai](https://hub.openfinclaw.ai). |
+
+Advanced overrides (rarely needed): `OPENFINCLAW_CONFIG_PATH`, `HUB_API_URL`, `DEEPAGENT_API_URL`, `REQUEST_TIMEOUT_MS`, `DEEPAGENT_SSE_TIMEOUT_MS` — see `packages/core/src/config.ts`.
 
 ---
 
 ## Development
 
 ```bash
-# Clone and install
-git clone https://github.com/mirror29/openfinclaw-cli.git
-cd openfinclaw-cli
-pnpm install
-
-# Build all packages
-pnpm build
-
-# Run CLI locally
-OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js deepagent health
-
-# Run MCP server locally
-OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js serve
+git clone https://github.com/mirror29/openfinclaw-cli.git && cd openfinclaw-cli && pnpm install && pnpm build
+OPENFINCLAW_API_KEY=<fch_...> node packages/cli/dist/index.js doctor   # smoke test
 ```
+
+Monorepo: `@openfinclaw/core` (zero-dep business logic) + `@openfinclaw/cli` (MCP server + terminal CLI + install wizard).
 
 ---
 

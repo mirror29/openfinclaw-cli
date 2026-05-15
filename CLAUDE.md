@@ -44,7 +44,7 @@ OpenFinClaw 定位为「以 DeepAgent 为核心的一站式量化交易 agent」
 
 Tools 分为 2 组，可通过 `--tools=` 独立加载：
 - `deepagent` — 14 远端 AI Agent 工具 (fin_deepagent_health / _skills / _threads / _messages / _research_submit / _research_poll / _research_finalize / _status / _cancel / _backtests / _backtest_result / _packages / _package_meta / _download_package)
-- `strategy` — 7 本地策略管理工具 (skill_publish, skill_validate, skill_fork, skill_leaderboard, skill_get_info, skill_list_local, skill_publish_verify)
+- `strategy` — 7 本地策略管理工具 (strategy_publish, strategy_validate, strategy_fork, strategy_leaderboard, strategy_get_info, strategy_list_local, strategy_publish_verify)
 
 未传 `--tools=` 时两组全部加载。示例：`--tools=deepagent` 只加载 DeepAgent。想在线先体验 DeepAgent 可访问 <https://hub.openfinclaw.ai/en/chat>。
 
@@ -129,7 +129,7 @@ def compute(data, context=None):
 - **position 获取入场价**：`position.get("entry_price") or position.get("avg_open") or position.get("avg_cost")`（Hub 字段名不固定，多试几个）
 - **context 字段**：`equity`（总权益）、`cash`（可用现金）、`position`（持仓 dict 或 None）
 
-### skill_validate 会检查
+### strategy_validate 会检查
 
 1. fep.yaml 结构完整性（必填字段）
 2. `riskProfile` 枚举值是否 Hub 兼容

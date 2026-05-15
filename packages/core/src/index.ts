@@ -25,20 +25,20 @@ export { hubApiRequest } from "./strategy/client.js";
 
 // Strategy tools
 export {
-  executeSkillLeaderboard,
-  skillLeaderboardSchema,
-  executeSkillGetInfo,
-  skillGetInfoSchema,
-  executeSkillFork,
-  skillForkSchema,
-  executeSkillListLocal,
-  skillListLocalSchema,
-  executeSkillValidate,
-  skillValidateSchema,
-  executeSkillPublish,
-  skillPublishSchema,
-  executeSkillPublishVerify,
-  skillPublishVerifySchema,
+  executeStrategyLeaderboard,
+  strategyLeaderboardSchema,
+  executeStrategyGetInfo,
+  strategyGetInfoSchema,
+  executeStrategyFork,
+  strategyForkSchema,
+  executeStrategyListLocal,
+  strategyListLocalSchema,
+  executeStrategyValidate,
+  strategyValidateSchema,
+  executeStrategyPublish,
+  strategyPublishSchema,
+  executeStrategyPublishVerify,
+  strategyPublishVerifySchema,
 } from "./strategy/tools.js";
 
 // Strategy utilities

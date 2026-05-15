@@ -10,10 +10,10 @@ import { forkStrategy, fetchStrategyInfo } from "./fork.js";
 import { listLocalStrategies } from "./storage.js";
 import { validateStrategyPackage } from "./validate.js";
 
-// ── skill_leaderboard ────────────────────────────────────────────────────
+// ── strategy_leaderboard ────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_leaderboard tool */
-export const skillLeaderboardSchema = {
+/** JSON Schema for the strategy_leaderboard tool */
+export const strategyLeaderboardSchema = {
   type: "object" as const,
   properties: {
     boardType: {
@@ -28,12 +28,12 @@ export const skillLeaderboardSchema = {
 };
 
 /**
- * Execute the skill_leaderboard tool.
+ * Execute the strategy_leaderboard tool.
  * Fetches the strategy leaderboard from the Hub API.
  * @param params - Tool parameters
  * @param config - Core configuration
  */
-export async function executeSkillLeaderboard(
+export async function executeStrategyLeaderboard(
   params: { boardType?: string; limit?: number; offset?: number },
   config: OpenFinClawConfig,
 ) {
@@ -82,10 +82,10 @@ export async function executeSkillLeaderboard(
   };
 }
 
-// ── skill_get_info ───────────────────────────────────────────────────────
+// ── strategy_get_info ───────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_get_info tool */
-export const skillGetInfoSchema = {
+/** JSON Schema for the strategy_get_info tool */
+export const strategyGetInfoSchema = {
   type: "object" as const,
   properties: {
     strategyId: {
@@ -97,12 +97,12 @@ export const skillGetInfoSchema = {
 };
 
 /**
- * Execute the skill_get_info tool.
+ * Execute the strategy_get_info tool.
  * Fetches detailed information about a strategy from the Hub.
  * @param params - Tool parameters
  * @param config - Core configuration
  */
-export async function executeSkillGetInfo(
+export async function executeStrategyGetInfo(
   params: { strategyId: string },
   config: OpenFinClawConfig,
 ) {
@@ -126,10 +126,10 @@ export async function executeSkillGetInfo(
   };
 }
 
-// ── skill_fork ───────────────────────────────────────────────────────────
+// ── strategy_fork ───────────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_fork tool */
-export const skillForkSchema = {
+/** JSON Schema for the strategy_fork tool */
+export const strategyForkSchema = {
   type: "object" as const,
   properties: {
     strategyId: { type: "string", description: "Strategy ID (UUID or Hub URL)" },
@@ -140,12 +140,12 @@ export const skillForkSchema = {
 };
 
 /**
- * Execute the skill_fork tool.
+ * Execute the strategy_fork tool.
  * Forks a strategy from the Hub and downloads it locally.
  * @param params - Tool parameters
  * @param config - Core configuration
  */
-export async function executeSkillFork(
+export async function executeStrategyFork(
   params: { strategyId: string; name?: string; targetDir?: string },
   config: OpenFinClawConfig,
 ) {
@@ -156,22 +156,22 @@ export async function executeSkillFork(
   return result;
 }
 
-// ── skill_list_local ─────────────────────────────────────────────────────
+// ── strategy_list_local ─────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_list_local tool */
-export const skillListLocalSchema = {
+/** JSON Schema for the strategy_list_local tool */
+export const strategyListLocalSchema = {
   type: "object" as const,
   properties: {},
   required: [] as string[],
 };
 
 /**
- * Execute the skill_list_local tool.
+ * Execute the strategy_list_local tool.
  * Lists all locally stored strategies.
  * @param _params - Tool parameters (unused)
  * @param _config - Core configuration (unused)
  */
-export async function executeSkillListLocal(
+export async function executeStrategyListLocal(
   _params: Record<string, unknown>,
   _config: OpenFinClawConfig,
 ) {
@@ -190,10 +190,10 @@ export async function executeSkillListLocal(
   };
 }
 
-// ── skill_validate ───────────────────────────────────────────────────────
+// ── strategy_validate ───────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_validate tool */
-export const skillValidateSchema = {
+/** JSON Schema for the strategy_validate tool */
+export const strategyValidateSchema = {
   type: "object" as const,
   properties: {
     dirPath: {
@@ -205,22 +205,22 @@ export const skillValidateSchema = {
 };
 
 /**
- * Execute the skill_validate tool.
+ * Execute the strategy_validate tool.
  * Validates a local strategy package directory.
  * @param params - Tool parameters
  * @param _config - Core configuration (unused)
  */
-export async function executeSkillValidate(
+export async function executeStrategyValidate(
   params: { dirPath: string },
   _config: OpenFinClawConfig,
 ) {
   return validateStrategyPackage(params.dirPath);
 }
 
-// ── skill_publish ────────────────────────────────────────────────────────
+// ── strategy_publish ────────────────────────────────────────────────────────
 
-/** JSON Schema for the skill_publish tool */
-export const skillPublishSchema = {
+/** JSON Schema for the strategy_publish tool */
+export const strategyPublishSchema = {
   type: "object" as const,
   properties: {
     filePath: {
@@ -237,12 +237,12 @@ export const skillPublishSchema = {
 };
 
 /**
- * Execute the skill_publish tool.
+ * Execute the strategy_publish tool.
  * Publishes a strategy ZIP to the Hub.
  * @param params - Tool parameters
  * @param config - Core configuration
  */
-export async function executeSkillPublish(
+export async function executeStrategyPublish(
   params: { filePath: string; visibility?: string },
   config: OpenFinClawConfig,
 ) {
@@ -259,25 +259,25 @@ export async function executeSkillPublish(
   return data;
 }
 
-// ── skill_publish_verify ─────────────────────────────────────────────────
+// ── strategy_publish_verify ─────────────────────────────────────────────────
 
-/** JSON Schema for the skill_publish_verify tool */
-export const skillPublishVerifySchema = {
+/** JSON Schema for the strategy_publish_verify tool */
+export const strategyPublishVerifySchema = {
   type: "object" as const,
   properties: {
-    submissionId: { type: "string", description: "Submission ID from skill_publish response" },
-    backtestTaskId: { type: "string", description: "Backtest task ID from skill_publish response" },
+    submissionId: { type: "string", description: "Submission ID from strategy_publish response" },
+    backtestTaskId: { type: "string", description: "Backtest task ID from strategy_publish response" },
   },
   required: [] as string[],
 };
 
 /**
- * Execute the skill_publish_verify tool.
+ * Execute the strategy_publish_verify tool.
  * Checks the status of a strategy publish submission.
  * @param params - Tool parameters
  * @param config - Core configuration
  */
-export async function executeSkillPublishVerify(
+export async function executeStrategyPublishVerify(
   params: { submissionId?: string; backtestTaskId?: string },
   config: OpenFinClawConfig,
 ) {
