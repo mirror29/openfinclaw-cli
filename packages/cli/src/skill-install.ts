@@ -153,8 +153,29 @@ export async function registerGlobalSkill(
 }
 
 /**
+ * TTY-aware ANSI helper. Honors `NO_COLOR` (https://no-color.org) and
+ * `FORCE_COLOR`, and otherwise activates only when stdout is a TTY so
+ * piped/redirected output stays free of stray escape sequences.
+ *
+ * @param code - SGR code (e.g. "32" for green, "2" for dim)
+ * @param s - Text to wrap
+ */
+function sgr(code: string, s: string): string {
+  if (process.env.NO_COLOR) return s;
+  const force =
+    process.env.FORCE_COLOR && process.env.FORCE_COLOR !== "0" && process.env.FORCE_COLOR !== "false";
+  if (!force && !process.stdout.isTTY) return s;
+  return `[${code}m${s}[0m`;
+}
+
+const green = (s: string): string => sgr("32", s);
+const dim = (s: string): string => sgr("2", s);
+
+/**
  * CLI entry for `openfinclaw skill-install`. Renders results as plain
- * lines so it works in both clack and non-clack contexts.
+ * lines so it works in both clack and non-clack contexts. Colors collapse
+ * to plain text when stdout is not a TTY or `NO_COLOR` is set, so piped
+ * output stays clean.
  *
  * @param argv - Args after the `skill-install` subcommand
  */
@@ -168,9 +189,9 @@ export async function runSkillInstall(argv: string[] = []): Promise<void> {
   for (const r of results) {
     if (r.written) {
       wrote++;
-      console.log(`  [32m✔[0m ${r.target}  [2m→[0m  ${r.path}`);
+      console.log(`  ${green("✔")} ${r.target}  ${dim("→")}  ${r.path}`);
     } else {
-      console.log(`  [2m○[0m ${r.target}  [2m→[0m  ${r.reason ?? "skipped"}`);
+      console.log(`  ${dim("○")} ${r.target}  ${dim("→")}  ${r.reason ?? "skipped"}`);
     }
   }
   console.log();
@@ -180,7 +201,7 @@ export async function runSkillInstall(argv: string[] = []): Promise<void> {
     );
   } else {
     console.log(
-      `  [32m✔[0m ${wrote} target${wrote === 1 ? "" : "s"} registered.`,
+      `  ${green("✔")} ${wrote} target${wrote === 1 ? "" : "s"} registered.`,
     );
   }
   console.log();
